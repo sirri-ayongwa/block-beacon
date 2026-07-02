@@ -1,0 +1,14 @@
+{
+  "name": "BlockBeacon",
+  "short_name": "BlockBeacon",
+  "description": "See it. Pin it. Fix your block. A neighborhood map for reporting local issues.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f2e6",
+  "theme_color": "#1f5a66",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
