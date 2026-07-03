@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      issue_photos: {
+        Row: {
+          created_at: string
+          id: string
+          issue_id: string
+          path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_id: string
+          path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_id?: string
+          path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_photos_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_status_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          issue_id: string
+          note: string | null
+          status: Database["public"]["Enums"]["issue_status"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          issue_id: string
+          note?: string | null
+          status: Database["public"]["Enums"]["issue_status"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          issue_id?: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["issue_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_status_events_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issue_votes: {
         Row: {
           created_at: string
@@ -42,10 +106,13 @@ export type Database = {
       }
       issues: {
         Row: {
+          acknowledged_at: string | null
           category: Database["public"]["Enums"]["issue_category"]
           created_at: string
           description: string | null
+          fixed_at: string | null
           id: string
+          is_anonymous: boolean
           lat: number
           lng: number
           photo_path: string | null
@@ -56,10 +123,13 @@ export type Database = {
           upvote_count: number
         }
         Insert: {
+          acknowledged_at?: string | null
           category?: Database["public"]["Enums"]["issue_category"]
           created_at?: string
           description?: string | null
+          fixed_at?: string | null
           id?: string
+          is_anonymous?: boolean
           lat: number
           lng: number
           photo_path?: string | null
@@ -70,10 +140,13 @@ export type Database = {
           upvote_count?: number
         }
         Update: {
+          acknowledged_at?: string | null
           category?: Database["public"]["Enums"]["issue_category"]
           created_at?: string
           description?: string | null
+          fixed_at?: string | null
           id?: string
+          is_anonymous?: boolean
           lat?: number
           lng?: number
           photo_path?: string | null
@@ -87,18 +160,33 @@ export type Database = {
       }
       profiles: {
         Row: {
+          country: string | null
           created_at: string
+          default_anonymous: boolean
           display_name: string | null
+          home_lat: number | null
+          home_lng: number | null
+          home_zoom: number | null
           id: string
         }
         Insert: {
+          country?: string | null
           created_at?: string
+          default_anonymous?: boolean
           display_name?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
+          home_zoom?: number | null
           id: string
         }
         Update: {
+          country?: string | null
           created_at?: string
+          default_anonymous?: boolean
           display_name?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
+          home_zoom?: number | null
           id?: string
         }
         Relationships: []

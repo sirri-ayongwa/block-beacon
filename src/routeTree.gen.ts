@@ -13,7 +13,9 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -34,9 +36,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
+  id: '/issue/$id',
+  path: '/issue/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -45,12 +57,16 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/map': typeof AuthenticatedMapRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/issue/$id': typeof AuthenticatedIssueIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/map': typeof AuthenticatedMapRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/issue/$id': typeof AuthenticatedIssueIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +75,20 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/sitemap.xml' | '/map'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/map'
+    | '/settings'
+    | '/issue/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/sitemap.xml' | '/map'
+  to: '/' | '/auth' | '/sitemap.xml' | '/map' | '/settings' | '/issue/$id'
   id:
     | '__root__'
     | '/'
@@ -72,6 +96,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/sitemap.xml'
     | '/_authenticated/map'
+    | '/_authenticated/settings'
+    | '/_authenticated/issue/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -111,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/map': {
       id: '/_authenticated/map'
       path: '/map'
@@ -118,15 +151,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMapRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/issue/$id': {
+      id: '/_authenticated/issue/$id'
+      path: '/issue/$id'
+      fullPath: '/issue/$id'
+      preLoaderRoute: typeof AuthenticatedIssueIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMapRoute: AuthenticatedMapRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedIssueIdRoute: AuthenticatedIssueIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
