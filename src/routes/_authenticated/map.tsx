@@ -1,15 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
-import type { LeafletMouseEvent } from "leaflet";
+import type { LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_MAP, CATEGORIES, STATUS_LABEL, type IssueCategory } from "@/lib/categories";
 import { makePinIcon } from "@/components/IssuePinIcon";
 import { ReportSheet } from "@/components/ReportSheet";
 import { toast } from "sonner";
-import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X } from "lucide-react";
+import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { COUNTRIES } from "@/lib/countries";
+import { listQueue, removeFromQueue, type QueuedReport } from "@/lib/offlineQueue";
+import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
+import { playChime, browserNotify, requestBrowserNotifPermission } from "@/lib/notify";
 
 export const Route = createFileRoute("/_authenticated/map")({
   component: MapPage,
@@ -27,6 +31,7 @@ type Issue = {
   photo_path: string | null;
   upvote_count: number;
   created_at: string;
+  is_anonymous: boolean;
 };
 
 const DEFAULT_CENTER: [number, number] = [40.7128, -74.006];
@@ -58,18 +63,53 @@ function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => voi
 function MapPage() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
+  const [defaultAnonymous, setDefaultAnonymous] = useState(false);
   const [pickedSpot, setPickedSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
+  const [initialZoom, setInitialZoom] = useState(13);
+  const [homeAppliedFromProfile, setHomeAppliedFromProfile] = useState(false);
+  const [country, setCountry] = useState<string>("");
   const [activeCats, setActiveCats] = useState<Set<IssueCategory>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [showLocations, setShowLocations] = useState(false);
   const [selected, setSelected] = useState<Issue | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
-  const mapRef = useRef<L.Map | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id ?? null;
+      setUserId(uid);
+      if (uid) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("country, home_lat, home_lng, home_zoom, default_anonymous")
+          .eq("id", uid)
+          .maybeSingle();
+        if (prof) {
+          setDefaultAnonymous(!!prof.default_anonymous);
+          setCountry(prof.country ?? "");
+          if (prof.home_lat != null && prof.home_lng != null) {
+            const c: [number, number] = [prof.home_lat, prof.home_lng];
+            setCenter(c);
+            setInitialZoom(prof.home_zoom ?? 13);
+            setHomeAppliedFromProfile(true);
+          } else if (prof.country) {
+            const cc = COUNTRIES.find((x) => x.code === prof.country);
+            if (cc) {
+              setCenter([cc.lat, cc.lng]);
+              setInitialZoom(cc.zoom);
+              setHomeAppliedFromProfile(true);
+            }
+          }
+        }
+      }
+      requestBrowserNotifPermission();
+    })();
   }, []);
 
   const { data: issues = [], refetch } = useQuery({
@@ -84,6 +124,29 @@ function MapPage() {
       return data as Issue[];
     },
   });
+
+  // Play a chime + browser notification whenever an issue you voted for OR
+  // reported moves to a new status.
+  useEffect(() => {
+    if (!issues.length) return;
+    const prev = prevStatusRef.current;
+    if (prev.size === 0) {
+      issues.forEach((i) => prev.set(i.id, i.status));
+      return;
+    }
+    for (const issue of issues) {
+      const previous = prev.get(issue.id);
+      if (previous && previous !== issue.status) {
+        const iCare = myVotes.has(issue.id) || issue.reporter_id === userId;
+        if (iCare) {
+          playChime();
+          browserNotify(`"${issue.title}" — ${STATUS_LABEL[issue.status]}`, "Tap to see the update");
+          toast.success(`"${issue.title}" → ${STATUS_LABEL[issue.status]}`);
+        }
+      }
+      prev.set(issue.id, issue.status);
+    }
+  }, [issues, myVotes, userId]);
 
   // Load my votes
   useEffect(() => {
@@ -108,6 +171,31 @@ function MapPage() {
       supabase.removeChannel(channel);
     };
   }, [refetch]);
+
+  // Fly to the profile home location once map is ready.
+  useEffect(() => {
+    if (homeAppliedFromProfile && mapRef.current) {
+      mapRef.current.flyTo(center, initialZoom, { duration: 0.4 });
+    }
+  }, [homeAppliedFromProfile, center, initialZoom]);
+
+  // Flush the offline outbox whenever we come back online.
+  useEffect(() => {
+    async function flush() {
+      if (!navigator.onLine || !userId) return;
+      const items = await listQueue();
+      if (!items.length) return;
+      toast.info(`Sending ${items.length} draft${items.length > 1 ? "s" : ""} you saved offline…`);
+      for (const item of items) {
+        try { await sendQueued(item); await removeFromQueue(item.id); }
+        catch (err) { console.warn("Retry later:", err); }
+      }
+      refetch();
+    }
+    flush();
+    window.addEventListener("online", flush);
+    return () => window.removeEventListener("online", flush);
+  }, [userId, refetch]);
 
   const filtered = useMemo(() => {
     if (activeCats.size === 0) return issues;
@@ -164,6 +252,13 @@ function MapPage() {
     setReportOpen(true);
   }
 
+  function jumpToCountry(code: string) {
+    const c = COUNTRIES.find((x) => x.code === code);
+    if (!c || !mapRef.current) return;
+    mapRef.current.flyTo([c.lat, c.lng], c.zoom, { duration: 0.8 });
+    setShowLocations(false);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     navigate({ to: "/" });
@@ -181,12 +276,21 @@ function MapPage() {
         </Link>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowLocations((s) => !s)}
+            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
+          >
+            <MapPin size={13} /> {country || "Location"}
+          </button>
+          <button
             onClick={() => setShowFilters((s) => !s)}
             className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
             <Filter size={13} />
             {activeCats.size > 0 ? `${activeCats.size} filter${activeCats.size > 1 ? "s" : ""}` : "Filter"}
           </button>
+          <Link to="/settings" title="Settings" className="rounded-full p-2 hover:bg-secondary">
+            <Settings size={16} />
+          </Link>
           <button
             onClick={signOut}
             title="Sign out"
@@ -196,6 +300,36 @@ function MapPage() {
           </button>
         </div>
       </header>
+
+      {showLocations && (
+        <div className="z-[500] absolute top-[56px] right-3 w-72 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
+          <div className="text-sm font-semibold mb-2">Jump to a country</div>
+          <input
+            list="country-jump"
+            placeholder="Search countries…"
+            onChange={(e) => {
+              const match = COUNTRIES.find((c) => c.name.toLowerCase() === e.target.value.toLowerCase());
+              if (match) jumpToCountry(match.code);
+            }}
+            className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm mb-2"
+          />
+          <datalist id="country-jump">
+            {COUNTRIES.map((c) => <option key={c.code} value={c.name} />)}
+          </datalist>
+          <div className="grid grid-cols-1 gap-0.5">
+            {COUNTRIES.map((c) => (
+              <button
+                key={c.code}
+                onClick={() => jumpToCountry(c.code)}
+                className="text-left text-sm px-2 py-1.5 rounded hover:bg-secondary flex items-center justify-between"
+              >
+                <span>{c.name}</span>
+                <span className="text-xs text-muted-foreground">{c.code}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showFilters && (
         <div className="z-[500] absolute top-[56px] left-3 right-3 md:right-auto md:w-80 rounded-2xl border border-border bg-card p-3 shadow-xl">
@@ -253,7 +387,7 @@ function MapPage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <LocateOnMount setCenter={setCenter} />
+          {!homeAppliedFromProfile && <LocateOnMount setCenter={setCenter} />}
           <MapClickHandler onPick={onPickSpot} />
           {filtered.map((issue) => (
             <Marker
@@ -360,6 +494,13 @@ function MapPage() {
               <ThumbsUp size={14} />
               {myVotes.has(selected.id) ? "You upvoted" : "Upvote"} · {selected.upvote_count}
             </button>
+            <Link
+              to="/issue/$id"
+              params={{ id: selected.id }}
+              className="rounded-full py-2 px-3 text-sm font-medium border border-border bg-background hover:bg-secondary flex items-center gap-1.5"
+            >
+              Details <ExternalLink size={12} />
+            </Link>
           </div>
         </div>
       )}
@@ -370,9 +511,39 @@ function MapPage() {
           onClose={() => setReportOpen(false)}
           location={pickedSpot}
           userId={userId}
+          defaultAnonymous={defaultAnonymous}
           onSubmitted={() => refetch()}
         />
       )}
     </div>
   );
+}
+
+// Sends a queued (offline) report now that we're online again.
+async function sendQueued(item: QueuedReport) {
+  const uploadedPaths: string[] = [];
+  for (const blob of item.photos) {
+    const path = `${item.reporterId}/${crypto.randomUUID()}.webp`;
+    const handle = uploadPhotoWithProgress("issue-photos", path, blob, () => {});
+    await handle.promise;
+    uploadedPaths.push(path);
+  }
+  const { data: row, error } = await supabase
+    .from("issues")
+    .insert({
+      reporter_id: item.reporterId,
+      title: item.title,
+      description: item.description,
+      category: item.category as IssueCategory,
+      lat: item.lat,
+      lng: item.lng,
+      photo_path: uploadedPaths[0] ?? null,
+      is_anonymous: item.isAnonymous,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (uploadedPaths.length && row) {
+    await supabase.from("issue_photos").insert(uploadedPaths.map((p) => ({ issue_id: row.id, path: p })));
+  }
 }
