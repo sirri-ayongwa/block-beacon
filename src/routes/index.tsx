@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { MapPin, Camera, ThumbsUp, Wifi } from "lucide-react";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -114,6 +115,7 @@ function Index() {
           </ol>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }
