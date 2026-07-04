@@ -3,8 +3,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES } from "@/lib/countries";
 import { toast } from "sonner";
-import { ArrowLeft, Locate, Save, Bell } from "lucide-react";
+import { ArrowLeft, Locate, Save, Bell, Trash2, Loader2, MapPinned } from "lucide-react";
 import { requestBrowserNotifPermission } from "@/lib/notify";
+import { AddressPicker, type ResolvedAddress } from "@/components/AddressPicker";
+import { getNotifPrefs, setNotifPrefs, type NotifPrefs } from "@/lib/notifPrefs";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteMyAccount } from "@/lib/account.functions";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -27,6 +31,12 @@ function SettingsPage() {
   const [homeZoom, setHomeZoom] = useState<number>(13);
   const [defaultAnon, setDefaultAnon] = useState(false);
   const [notifOn, setNotifOn] = useState(false);
+  const [addressLabel, setAddressLabel] = useState<string>("");
+  const [showPicker, setShowPicker] = useState(false);
+  const [prefs, setPrefs] = useState<NotifPrefs>(() => getNotifPrefs());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccountFn = useServerFn(deleteMyAccount);
 
   useEffect(() => {
     (async () => {
@@ -51,6 +61,35 @@ function SettingsPage() {
       setLoading(false);
     })();
   }, []);
+
+  function onAddressResolved(a: ResolvedAddress) {
+    setHomeLat(a.lat.toFixed(5));
+    setHomeLng(a.lng.toFixed(5));
+    setHomeZoom(16);
+    if (a.country) setCountry(a.country);
+    setAddressLabel(a.label);
+    setShowPicker(false);
+  }
+
+  function updatePref<K extends keyof NotifPrefs>(k: K, v: NotifPrefs[K]) {
+    const next = { ...prefs, [k]: v };
+    setPrefs(next);
+    setNotifPrefs(next);
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    try {
+      await deleteAccountFn({});
+      await supabase.auth.signOut();
+      toast.success("Your account was permanently deleted.");
+      navigate({ to: "/" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't delete your account");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function useMyLocation() {
     if (!navigator.geolocation) return toast.error("Location isn't available on this device");
@@ -137,8 +176,31 @@ function SettingsPage() {
         <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
           <h2 className="font-semibold">Where you live</h2>
           <p className="text-xs text-muted-foreground">
-            Pick your country and (optionally) a home spot. The map will open there next time.
+            Pin your precise address — the map will open right at your street next time. You can also just pick a country.
           </p>
+
+          <button
+            type="button"
+            onClick={() => setShowPicker((s) => !s)}
+            className="w-full rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-sm font-medium text-primary flex items-center justify-center gap-2 hover:bg-primary/10"
+          >
+            <MapPinned size={14} />
+            {showPicker ? "Hide address picker" : "Pin my precise address"}
+          </button>
+
+          {showPicker && (
+            <div className="rounded-xl border border-border bg-background p-3">
+              <AddressPicker initialCountry={country} onResolved={onAddressResolved} compact />
+            </div>
+          )}
+
+          {addressLabel && (
+            <div className="rounded-xl bg-success/10 border border-success/30 px-3 py-2 text-xs">
+              <div className="font-medium">Pinned:</div>
+              <div className="text-muted-foreground">{addressLabel}</div>
+            </div>
+          )}
+
           <label className="text-xs font-medium text-muted-foreground">Country</label>
           <select
             value={country}
@@ -233,7 +295,7 @@ function SettingsPage() {
             <h2 className="font-semibold">Notifications</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Get a little chime and popup when an issue moves to "City is looking" or "Fixed".
+            Choose exactly which updates ping you. Applies to reports you posted or upvoted.
           </p>
           <button
             type="button"
@@ -242,6 +304,25 @@ function SettingsPage() {
           >
             {notifOn ? "Notifications are on ✓" : "Turn on notifications"}
           </button>
+
+          <div className="mt-2 divide-y divide-border rounded-xl border border-border">
+            {[
+              { k: "soundOnStatus" as const, label: "Sound when status changes" },
+              { k: "browserOnStatus" as const, label: "Browser popup when status changes" },
+              { k: "soundOnUpvote" as const, label: "Sound when someone upvotes your report" },
+              { k: "browserOnUpvote" as const, label: "Browser popup on new upvotes" },
+            ].map((row) => (
+              <label key={row.k} className="flex items-center justify-between px-3 py-2.5 cursor-pointer text-sm">
+                <span>{row.label}</span>
+                <input
+                  type="checkbox"
+                  checked={prefs[row.k]}
+                  onChange={(e) => updatePref(row.k, e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </label>
+            ))}
+          </div>
         </section>
 
         <button
@@ -252,6 +333,47 @@ function SettingsPage() {
           <Save size={16} />
           {saving ? "Saving…" : "Save settings"}
         </button>
+
+        <section className="rounded-2xl border border-destructive/40 bg-destructive/5 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Trash2 size={16} className="text-destructive" />
+            <h2 className="font-semibold text-destructive">Delete account</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Permanently removes your account, reports, upvotes, and profile. This cannot be undone.
+          </p>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-sm rounded-full border border-destructive text-destructive px-4 py-2 hover:bg-destructive/10"
+            >
+              Delete my account…
+            </button>
+          ) : (
+            <div className="rounded-xl border border-destructive/40 bg-background p-3 space-y-3">
+              <p className="text-sm font-medium text-foreground">
+                Are you sure? All your reports and upvotes will be permanently deleted.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="flex-1 rounded-full bg-destructive text-destructive-foreground py-2 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  Yes, delete forever
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                  className="flex-1 rounded-full border border-border py-2 text-sm hover:bg-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );

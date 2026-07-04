@@ -14,6 +14,8 @@ import { COUNTRIES } from "@/lib/countries";
 import { listQueue, removeFromQueue, type QueuedReport } from "@/lib/offlineQueue";
 import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
 import { playChime, browserNotify, requestBrowserNotifPermission } from "@/lib/notify";
+import { getNotifPrefs } from "@/lib/notifPrefs";
+import { AddressPicker, type ResolvedAddress } from "@/components/AddressPicker";
 
 export const Route = createFileRoute("/_authenticated/map")({
   component: MapPage,
@@ -71,8 +73,11 @@ function MapPage() {
   const [homeAppliedFromProfile, setHomeAppliedFromProfile] = useState(false);
   const [country, setCountry] = useState<string>("");
   const [activeCats, setActiveCats] = useState<Set<IssueCategory>>(new Set());
+  const [activeStatuses, setActiveStatuses] = useState<Set<Issue["status"]>>(new Set());
+  const [sortBy, setSortBy] = useState<"recent" | "upvotes">("recent");
   const [showFilters, setShowFilters] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [selected, setSelected] = useState<Issue | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
@@ -105,7 +110,12 @@ function MapPage() {
               setInitialZoom(cc.zoom);
               setHomeAppliedFromProfile(true);
             }
+            setShowOnboarding(true);
+          } else {
+            setShowOnboarding(true);
           }
+        } else {
+          setShowOnboarding(true);
         }
       }
       requestBrowserNotifPermission();
@@ -134,13 +144,14 @@ function MapPage() {
       issues.forEach((i) => prev.set(i.id, i.status));
       return;
     }
+    const prefs = getNotifPrefs();
     for (const issue of issues) {
       const previous = prev.get(issue.id);
       if (previous && previous !== issue.status) {
         const iCare = myVotes.has(issue.id) || issue.reporter_id === userId;
         if (iCare) {
-          playChime();
-          browserNotify(`"${issue.title}" — ${STATUS_LABEL[issue.status]}`, "Tap to see the update");
+          if (prefs.soundOnStatus) playChime();
+          if (prefs.browserOnStatus) browserNotify(`"${issue.title}" — ${STATUS_LABEL[issue.status]}`, "Tap to see the update");
           toast.success(`"${issue.title}" → ${STATUS_LABEL[issue.status]}`);
         }
       }
@@ -198,9 +209,34 @@ function MapPage() {
   }, [userId, refetch]);
 
   const filtered = useMemo(() => {
-    if (activeCats.size === 0) return issues;
-    return issues.filter((i) => activeCats.has(i.category));
-  }, [issues, activeCats]);
+    let out = issues;
+    if (activeCats.size > 0) out = out.filter((i) => activeCats.has(i.category));
+    if (activeStatuses.size > 0) out = out.filter((i) => activeStatuses.has(i.status));
+    if (sortBy === "upvotes") {
+      out = [...out].sort((a, b) => b.upvote_count - a.upvote_count);
+    }
+    return out;
+  }, [issues, activeCats, activeStatuses, sortBy]);
+
+  const activeFilterCount = activeCats.size + activeStatuses.size + (sortBy !== "recent" ? 1 : 0);
+
+  async function saveHomeFromOnboarding(a: ResolvedAddress) {
+    if (!userId) return;
+    const patch = {
+      id: userId,
+      country: a.country || null,
+      home_lat: a.lat,
+      home_lng: a.lng,
+      home_zoom: 16,
+    };
+    await supabase.from("profiles").upsert(patch);
+    setCenter([a.lat, a.lng]);
+    setInitialZoom(16);
+    setHomeAppliedFromProfile(true);
+    mapRef.current?.flyTo([a.lat, a.lng], 16, { duration: 0.8 });
+    setShowOnboarding(false);
+    toast.success("Home pinned! The map will open here next time.");
+  }
 
   async function fetchPhotoUrl(issue: Issue) {
     if (!issue.photo_path || photoUrls[issue.id]) return;
@@ -286,7 +322,7 @@ function MapPage() {
             className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
             <Filter size={13} />
-            {activeCats.size > 0 ? `${activeCats.size} filter${activeCats.size > 1 ? "s" : ""}` : "Filter"}
+            {activeFilterCount > 0 ? `${activeFilterCount} filter${activeFilterCount > 1 ? "s" : ""}` : "Filter"}
           </button>
           <Link to="/settings" title="Settings" className="rounded-full p-2 hover:bg-secondary">
             <Settings size={16} />
@@ -303,47 +339,35 @@ function MapPage() {
 
       {showLocations && (
         <div className="z-[500] absolute top-[56px] right-3 w-72 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
-          <div className="text-sm font-semibold mb-2">Jump to a country</div>
-          <input
-            list="country-jump"
-            placeholder="Search countries…"
-            onChange={(e) => {
-              const match = COUNTRIES.find((c) => c.name.toLowerCase() === e.target.value.toLowerCase());
-              if (match) jumpToCountry(match.code);
+          <div className="text-sm font-semibold mb-2">Jump to a precise address</div>
+          <AddressPicker
+            initialCountry={country}
+            onResolved={(a) => {
+              if (a.country) setCountry(a.country);
+              mapRef.current?.flyTo([a.lat, a.lng], 16, { duration: 0.8 });
+              setCenter([a.lat, a.lng]);
+              setShowLocations(false);
             }}
-            className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm mb-2"
+            compact
           />
-          <datalist id="country-jump">
-            {COUNTRIES.map((c) => <option key={c.code} value={c.name} />)}
-          </datalist>
-          <div className="grid grid-cols-1 gap-0.5">
-            {COUNTRIES.map((c) => (
-              <button
-                key={c.code}
-                onClick={() => jumpToCountry(c.code)}
-                className="text-left text-sm px-2 py-1.5 rounded hover:bg-secondary flex items-center justify-between"
-              >
-                <span>{c.name}</span>
-                <span className="text-xs text-muted-foreground">{c.code}</span>
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
       {showFilters && (
         <div className="z-[500] absolute top-[56px] left-3 right-3 md:right-auto md:w-80 rounded-2xl border border-border bg-card p-3 shadow-xl">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-semibold">Show only</div>
-            {activeCats.size > 0 && (
+            <div className="text-sm font-semibold">Filter & sort</div>
+            {activeFilterCount > 0 && (
               <button
-                onClick={() => setActiveCats(new Set())}
+                onClick={() => { setActiveCats(new Set()); setActiveStatuses(new Set()); setSortBy("recent"); }}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Clear
+                Clear all
               </button>
             )}
           </div>
+
+          <div className="text-[11px] font-medium text-muted-foreground mb-1">Category</div>
           <div className="grid grid-cols-3 gap-1.5">
             {CATEGORIES.map((c) => {
               const on = activeCats.has(c.key);
@@ -368,6 +392,76 @@ function MapPage() {
                 </button>
               );
             })}
+          </div>
+
+          <div className="mt-3 text-[11px] font-medium text-muted-foreground mb-1">Status</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(["open", "acknowledged", "fixed"] as const).map((s) => {
+              const on = activeStatuses.has(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() =>
+                    setActiveStatuses((prev) => {
+                      const n = new Set(prev);
+                      on ? n.delete(s) : n.add(s);
+                      return n;
+                    })
+                  }
+                  className={`rounded-lg border px-1 py-1.5 text-[11px] font-medium leading-tight ${
+                    on
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-background hover:bg-secondary"
+                  }`}
+                >
+                  {STATUS_LABEL[s]}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 text-[11px] font-medium text-muted-foreground mb-1">Sort by</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {([
+              ["recent", "Newest first"],
+              ["upvotes", "Most upvoted"],
+            ] as const).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setSortBy(k)}
+                className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium ${
+                  sortBy === k
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-background hover:bg-secondary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showOnboarding && userId && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-foreground/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl">
+            <div className="p-5 border-b border-border">
+              <h2 className="font-display text-xl font-bold">Welcome to your block 👋</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Let's pin your neighborhood so the map opens right where you live. You can change this anytime in Settings.
+              </p>
+            </div>
+            <div className="p-5">
+              <AddressPicker onResolved={saveHomeFromOnboarding} compact />
+            </div>
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => setShowOnboarding(false)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground py-2"
+              >
+                Skip for now
+              </button>
+            </div>
           </div>
         </div>
       )}
