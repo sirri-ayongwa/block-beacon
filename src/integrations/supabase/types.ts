@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          issue_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          issue_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          issue_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_rooms_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issue_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_moderator: boolean
+          issue_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_moderator?: boolean
+          issue_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_moderator?: boolean
+          issue_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_comments_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issue_photos: {
         Row: {
           created_at: string
@@ -111,6 +213,9 @@ export type Database = {
           created_at: string
           description: string | null
           fixed_at: string | null
+          handed_off_at: string | null
+          handed_off_by: string | null
+          handoff_note: string | null
           id: string
           is_anonymous: boolean
           lat: number
@@ -128,6 +233,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           fixed_at?: string | null
+          handed_off_at?: string | null
+          handed_off_by?: string | null
+          handoff_note?: string | null
           id?: string
           is_anonymous?: boolean
           lat: number
@@ -145,6 +253,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           fixed_at?: string | null
+          handed_off_at?: string | null
+          handed_off_by?: string | null
+          handoff_note?: string | null
           id?: string
           is_anonymous?: boolean
           lat?: number
@@ -158,47 +269,124 @@ export type Database = {
         }
         Relationships: []
       }
+      moderator_profiles: {
+        Row: {
+          community: string
+          created_at: string
+          gov_email: string
+          id: string
+          organization: string
+          proof_url: string | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          community: string
+          created_at?: string
+          gov_email: string
+          id: string
+          organization: string
+          proof_url?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          community?: string
+          created_at?: string
+          gov_email?: string
+          id?: string
+          organization?: string
+          proof_url?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           country: string | null
           created_at: string
           default_anonymous: boolean
+          digest_subscribed: boolean
           display_name: string | null
           home_lat: number | null
           home_lng: number | null
           home_zoom: number | null
           id: string
+          preferred_language: string | null
         }
         Insert: {
           country?: string | null
           created_at?: string
           default_anonymous?: boolean
+          digest_subscribed?: boolean
           display_name?: string | null
           home_lat?: number | null
           home_lng?: number | null
           home_zoom?: number | null
           id: string
+          preferred_language?: string | null
         }
         Update: {
           country?: string | null
           created_at?: string
           default_anonymous?: boolean
+          digest_subscribed?: boolean
           display_name?: string | null
           home_lat?: number | null
           home_lng?: number | null
           home_zoom?: number | null
           id?: string
+          preferred_language?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      reporter_leaderboard: {
+        Row: {
+          country: string | null
+          display_name: string | null
+          fixed_count: number | null
+          id: string | null
+          report_count: number | null
+          total_upvotes: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "user" | "moderator" | "admin"
       issue_category:
         | "broken_streetlight"
         | "litter"
@@ -337,6 +525,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["user", "moderator", "admin"],
       issue_category: [
         "broken_streetlight",
         "litter",

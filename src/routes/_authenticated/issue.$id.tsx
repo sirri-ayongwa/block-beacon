@@ -5,6 +5,12 @@ import { CATEGORY_MAP, STATUS_LABEL } from "@/lib/categories";
 import { ArrowLeft, ThumbsUp, MapPin, User, EyeOff, ChevronLeft, ChevronRight, CheckCircle2, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
+import { IssueComments } from "@/components/IssueComments";
+import { IssueChat } from "@/components/IssueChat";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { useModeratorStatus } from "@/lib/roles";
+import { HANDOFF_NOTE, build311EmailBody, buildHandoffPdf } from "@/lib/handoff";
+import { Send } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/issue/$id")({
   component: IssueDetail,
@@ -24,10 +30,12 @@ type IssueRow = {
   created_at: string;
   acknowledged_at: string | null;
   fixed_at: string | null;
+  handed_off_at?: string | null;
+  handoff_note?: string | null;
 };
 
 type Photo = { id: string; path: string; url?: string };
-type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string };
+type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null };
 type Voter = { user_id: string; created_at: string; display_name: string | null; is_anonymous: boolean };
 
 const STATUS_STEPS: Array<"open" | "acknowledged" | "fixed"> = ["open", "acknowledged", "fixed"];
@@ -48,6 +56,7 @@ function IssueDetail() {
   const [myVoted, setMyVoted] = useState(false);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { isModerator, profile: modProfile, isVerified: isVerifiedMod } = useModeratorStatus();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
@@ -57,7 +66,7 @@ function IssueDetail() {
     const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
       supabase.from("issues").select("*").eq("id", id).maybeSingle(),
       supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
-      supabase.from("issue_status_events").select("id, status, note, created_at").eq("issue_id", id).order("created_at"),
+      supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
     ]);
     if (!issueData) {
       setLoading(false);
@@ -156,6 +165,23 @@ function IssueDetail() {
     else toast.success(`Marked "${STATUS_LABEL[next]}"`);
   }
 
+  async function handOff() {
+    if (!issue || !modProfile) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("issues") as any).update({
+      handed_off_at: new Date().toISOString(),
+      handoff_note: HANDOFF_NOTE,
+    }).eq("id", issue.id);
+    if (error) { toast.error(error.message); return; }
+    const subject = `[BlockBeacon] ${CATEGORY_MAP[issue.category]?.label ?? "Community issue"} — ${issue.title}`;
+    const body = build311EmailBody(issue, modProfile.community, modProfile.organization);
+    const { url, filename } = buildHandoffPdf(issue, modProfile.community, modProfile.organization);
+    const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast.success("Handoff recorded — PDF downloaded, email drafted.");
+  }
+
   const timeline = useMemo(() => {
     // Latest event per status so the 3-step timeline stays clean.
     const map = new Map<string, StatusEvent>();
@@ -234,6 +260,13 @@ function IssueDetail() {
               : issue.status === "acknowledged" ? "bg-warning/20 text-warning"
               : "bg-secondary text-secondary-foreground"
             }`}>{STATUS_LABEL[issue.status]}</span>
+            {(issue.status === "fixed" || issue.status === "acknowledged") && (
+              // Show the verified city badge next to moderator-updated statuses.
+              // We can't cheaply prove per-event who set it here, so we only surface
+              // the badge if the current status change carries a moderator-authored
+              // status_event in the loaded list.
+              <ModeratorStatusBadge events={events} currentStatus={issue.status} />
+            )}
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               {cat?.emoji} {cat?.label}
             </span>
@@ -244,6 +277,15 @@ function IssueDetail() {
               {issue.is_anonymous ? <><EyeOff size={12} /> A neighbor (anonymous)</> : <><User size={12} /> {reporterName ?? "A neighbor"}</>}
             </span>
           </div>
+
+          {issue.handed_off_at && (
+            <p className="text-sm italic text-primary/90 bg-primary/5 border-l-2 border-primary pl-3 py-2 rounded-r-xl">
+              {issue.handoff_note ?? HANDOFF_NOTE}
+              <span className="not-italic block mt-1 text-[11px] text-muted-foreground">
+                Handed off {format(new Date(issue.handed_off_at), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+            </p>
+          )}
 
           {issue.description && (
             <p className="text-sm text-foreground/90 whitespace-pre-wrap">{issue.description}</p>
@@ -258,6 +300,15 @@ function IssueDetail() {
             <ThumbsUp size={16} />
             {myVoted ? "You upvoted this" : "Upvote — signal priority"} · {issue.upvote_count}
           </button>
+
+          {isModerator && !issue.handed_off_at && (
+            <button
+              onClick={handOff}
+              className="w-full rounded-full border-2 border-primary bg-primary/5 text-primary py-2.5 font-medium flex items-center justify-center gap-2 hover:bg-primary/10"
+            >
+              <Send size={14} /> Hand off to city hall
+            </button>
+          )}
 
           {/* Status timeline */}
           <section className="rounded-2xl border border-border bg-card p-4">
@@ -294,9 +345,12 @@ function IssueDetail() {
               })}
             </ol>
 
-            {isReporter && (
+            {(isReporter || isModerator) && (
               <div className="mt-4 border-t border-border pt-3 space-y-2">
-                <div className="text-xs text-muted-foreground">You reported this — update the status:</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  {isModerator ? "Update status as moderator:" : "You reported this — update the status:"}
+                  {isModerator && (isVerifiedMod ? <VerifiedBadge /> : <span className="text-[10px] rounded-full bg-warning/15 text-warning px-1.5 py-0.5 font-semibold">Moderator</span>)}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {STATUS_STEPS.map((s) => (
                     <button
@@ -314,6 +368,15 @@ function IssueDetail() {
               </div>
             )}
           </section>
+
+          <IssueComments
+            issueId={issue.id}
+            currentUserId={me}
+            isModerator={isModerator}
+            isVerifiedMod={isVerifiedMod}
+          />
+
+          <IssueChat issueId={issue.id} currentUserId={me} />
 
           {/* Upvoters */}
           <section className="rounded-2xl border border-border bg-card p-4">
@@ -345,4 +408,21 @@ function IssueDetail() {
       </main>
     </div>
   );
+}
+
+function ModeratorStatusBadge({ events, currentStatus }: { events: StatusEvent[]; currentStatus: "open" | "acknowledged" | "fixed" }) {
+  const [verified, setVerified] = useState(false);
+  useEffect(() => {
+    // Find the latest status_event with the current status; look up whether its author is a verified moderator.
+    const evt = [...events].reverse().find((e) => e.status === currentStatus);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const created_by = (evt as any)?.created_by as string | undefined;
+    if (!created_by) { setVerified(false); return; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("moderator_profiles" as any) as any)
+      .select("verified").eq("id", created_by).maybeSingle()
+      .then(({ data }: { data: { verified: boolean } | null }) => setVerified(!!data?.verified));
+  }, [events, currentStatus]);
+  if (!verified) return null;
+  return <VerifiedBadge />;
 }

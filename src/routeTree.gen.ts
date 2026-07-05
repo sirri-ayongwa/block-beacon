@@ -14,7 +14,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
+import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -41,11 +44,28 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedModeratorRoute = AuthenticatedModeratorRouteImport.update({
+  id: '/moderator',
+  path: '/moderator',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
   id: '/map',
   path: '/map',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderboardRoute =
+  AuthenticatedLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedModeratorApplyRoute =
+  AuthenticatedModeratorApplyRouteImport.update({
+    id: '/apply',
+    path: '/apply',
+    getParentRoute: () => AuthenticatedModeratorRoute,
+  } as any)
 const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
   id: '/issue/$id',
   path: '/issue/$id',
@@ -56,17 +76,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
+  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
+  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -74,9 +100,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
+  '/_authenticated/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/_authenticated/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -84,20 +113,35 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/sitemap.xml'
+    | '/leaderboard'
     | '/map'
+    | '/moderator'
     | '/settings'
     | '/issue/$id'
+    | '/moderator/apply'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/sitemap.xml' | '/map' | '/settings' | '/issue/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/leaderboard'
+    | '/map'
+    | '/moderator'
+    | '/settings'
+    | '/issue/$id'
+    | '/moderator/apply'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/sitemap.xml'
+    | '/_authenticated/leaderboard'
     | '/_authenticated/map'
+    | '/_authenticated/moderator'
     | '/_authenticated/settings'
     | '/_authenticated/issue/$id'
+    | '/_authenticated/moderator/apply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -144,12 +188,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/moderator': {
+      id: '/_authenticated/moderator'
+      path: '/moderator'
+      fullPath: '/moderator'
+      preLoaderRoute: typeof AuthenticatedModeratorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/map': {
       id: '/_authenticated/map'
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof AuthenticatedMapRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leaderboard': {
+      id: '/_authenticated/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/moderator/apply': {
+      id: '/_authenticated/moderator/apply'
+      path: '/apply'
+      fullPath: '/moderator/apply'
+      preLoaderRoute: typeof AuthenticatedModeratorApplyRouteImport
+      parentRoute: typeof AuthenticatedModeratorRoute
     }
     '/_authenticated/issue/$id': {
       id: '/_authenticated/issue/$id'
@@ -161,14 +226,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedModeratorRouteChildren {
+  AuthenticatedModeratorApplyRoute: typeof AuthenticatedModeratorApplyRoute
+}
+
+const AuthenticatedModeratorRouteChildren: AuthenticatedModeratorRouteChildren =
+  {
+    AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
+  }
+
+const AuthenticatedModeratorRouteWithChildren =
+  AuthenticatedModeratorRoute._addFileChildren(
+    AuthenticatedModeratorRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
+  AuthenticatedModeratorRoute: AuthenticatedModeratorRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIssueIdRoute: AuthenticatedIssueIdRoute,
 }
@@ -185,13 +268,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
