@@ -35,7 +35,7 @@ type IssueRow = {
 };
 
 type Photo = { id: string; path: string; url?: string };
-type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string };
+type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null };
 type Voter = { user_id: string; created_at: string; display_name: string | null; is_anonymous: boolean };
 
 const STATUS_STEPS: Array<"open" | "acknowledged" | "fixed"> = ["open", "acknowledged", "fixed"];
@@ -66,7 +66,7 @@ function IssueDetail() {
     const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
       supabase.from("issues").select("*").eq("id", id).maybeSingle(),
       supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
-      supabase.from("issue_status_events").select("id, status, note, created_at").eq("issue_id", id).order("created_at"),
+      supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
     ]);
     if (!issueData) {
       setLoading(false);
