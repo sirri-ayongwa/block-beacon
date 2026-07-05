@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
 import { enqueueReport } from "@/lib/offlineQueue";
+import { haversineMeters } from "@/lib/geo";
 
 type Props = {
   open: boolean;
@@ -35,6 +36,8 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
   const [anonymous, setAnonymous] = useState(defaultAnonymous);
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [dupeWarning, setDupeWarning] = useState<{ id: string; title: string; distance: number } | null>(null);
+  const [dupeAcknowledged, setDupeAcknowledged] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,8 +50,39 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
       });
       setCategory("pothole");
       setAnonymous(defaultAnonymous);
+      setDupeWarning(null);
+      setDupeAcknowledged(false);
     }
   }, [open, defaultAnonymous]);
+
+  // Check nearby (<30m) issues in the same category whenever the spot or
+  // category changes, so neighbors don't double-report the same problem.
+  useEffect(() => {
+    if (!open || !location) { setDupeWarning(null); return; }
+    let cancelled = false;
+    (async () => {
+      const delta = 0.001; // ~110m bounding box
+      const { data } = await supabase
+        .from("issues")
+        .select("id, title, lat, lng, category, status")
+        .eq("category", category)
+        .neq("status", "fixed")
+        .gte("lat", location.lat - delta)
+        .lte("lat", location.lat + delta)
+        .gte("lng", location.lng - delta)
+        .lte("lng", location.lng + delta)
+        .limit(20);
+      if (cancelled) return;
+      let best: { id: string; title: string; distance: number } | null = null;
+      for (const row of (data ?? []) as Array<{ id: string; title: string; lat: number; lng: number }>) {
+        const d = haversineMeters(location, { lat: row.lat, lng: row.lng });
+        if (d <= 30 && (!best || d < best.distance)) best = { id: row.id, title: row.title, distance: d };
+      }
+      setDupeWarning(best);
+      setDupeAcknowledged(false);
+    })();
+    return () => { cancelled = true; };
+  }, [open, location, category]);
 
   useEffect(() => {
     function updateOnline() { setOnline(navigator.onLine); }
@@ -139,6 +173,11 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
     }
     setBusy(true);
     try {
+      if (dupeWarning && !dupeAcknowledged) {
+        toast.error("Looks like this may already be reported nearby — confirm below to send anyway.");
+        setBusy(false);
+        return;
+      }
       // If offline, queue the whole report to send later.
       if (!navigator.onLine) {
         await enqueueReport({
