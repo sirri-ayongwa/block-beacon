@@ -8,7 +8,7 @@ import { CATEGORY_MAP, CATEGORIES, STATUS_LABEL, type IssueCategory } from "@/li
 import { makePinIcon } from "@/components/IssuePinIcon";
 import { ReportSheet } from "@/components/ReportSheet";
 import { toast } from "sonner";
-import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink } from "lucide-react";
+import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink, Trophy, ShieldCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { COUNTRIES } from "@/lib/countries";
 import { listQueue, removeFromQueue, type QueuedReport } from "@/lib/offlineQueue";
@@ -326,6 +326,12 @@ function MapPage() {
           </button>
           <Link to="/settings" title="Settings" className="rounded-full p-2 hover:bg-secondary">
             <Settings size={16} />
+          </Link>
+          <Link to="/leaderboard" title="Leaderboard" className="rounded-full p-2 hover:bg-secondary">
+            <Trophy size={16} />
+          </Link>
+          <Link to="/moderator" title="Moderator" className="rounded-full p-2 hover:bg-secondary">
+            <ShieldCheck size={16} />
           </Link>
           <button
             onClick={signOut}
