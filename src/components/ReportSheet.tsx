@@ -276,6 +276,25 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
               </div>
             </div>
           )}
+          {dupeWarning && (
+            <div className="rounded-xl bg-warning/10 border border-warning/40 p-3 text-xs space-y-2">
+              <div className="font-medium text-foreground">
+                A similar report exists ~{Math.round(dupeWarning.distance)}m away
+              </div>
+              <div className="text-muted-foreground">
+                "{dupeWarning.title}" — same category, still open. Upvoting it may be more effective than reporting again.
+              </div>
+              <label className="flex items-center gap-2 text-foreground">
+                <input
+                  type="checkbox"
+                  checked={dupeAcknowledged}
+                  onChange={(e) => setDupeAcknowledged(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                Send anyway — this is a different issue
+              </label>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-muted-foreground">What is it?</label>
             <div className="mt-2 grid grid-cols-3 gap-2">
