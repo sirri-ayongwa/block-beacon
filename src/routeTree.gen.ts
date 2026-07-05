@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
@@ -53,6 +54,12 @@ const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
   path: '/map',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderboardRoute =
+  AuthenticatedLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedModeratorApplyRoute =
   AuthenticatedModeratorApplyRouteImport.update({
     id: '/apply',
@@ -69,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
@@ -79,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
@@ -91,6 +100,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
   '/_authenticated/moderator': typeof AuthenticatedModeratorRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/sitemap.xml'
+    | '/leaderboard'
     | '/map'
     | '/moderator'
     | '/settings'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/sitemap.xml'
+    | '/leaderboard'
     | '/map'
     | '/moderator'
     | '/settings'
@@ -124,6 +136,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/sitemap.xml'
+    | '/_authenticated/leaderboard'
     | '/_authenticated/map'
     | '/_authenticated/moderator'
     | '/_authenticated/settings'
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMapRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leaderboard': {
+      id: '/_authenticated/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/moderator/apply': {
       id: '/_authenticated/moderator/apply'
       path: '/apply'
@@ -221,6 +241,7 @@ const AuthenticatedModeratorRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
   AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -228,6 +249,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
   AuthenticatedModeratorRoute: AuthenticatedModeratorRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
