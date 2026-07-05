@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -46,6 +47,12 @@ const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
   path: '/map',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedModeratorApplyRoute =
+  AuthenticatedModeratorApplyRouteImport.update({
+    id: '/moderator/apply',
+    path: '/moderator/apply',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
   id: '/issue/$id',
   path: '/issue/$id',
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/map': typeof AuthenticatedMapRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesByTo {
   '/map': typeof AuthenticatedMapRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +86,7 @@ export interface FileRoutesById {
   '/_authenticated/map': typeof AuthenticatedMapRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
+  '/_authenticated/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +97,16 @@ export interface FileRouteTypes {
     | '/map'
     | '/settings'
     | '/issue/$id'
+    | '/moderator/apply'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/sitemap.xml' | '/map' | '/settings' | '/issue/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/map'
+    | '/settings'
+    | '/issue/$id'
+    | '/moderator/apply'
   id:
     | '__root__'
     | '/'
@@ -98,6 +116,7 @@ export interface FileRouteTypes {
     | '/_authenticated/map'
     | '/_authenticated/settings'
     | '/_authenticated/issue/$id'
+    | '/_authenticated/moderator/apply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -151,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMapRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/moderator/apply': {
+      id: '/_authenticated/moderator/apply'
+      path: '/moderator/apply'
+      fullPath: '/moderator/apply'
+      preLoaderRoute: typeof AuthenticatedModeratorApplyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/issue/$id': {
       id: '/_authenticated/issue/$id'
       path: '/issue/$id'
@@ -165,12 +191,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
+  AuthenticatedModeratorApplyRoute: typeof AuthenticatedModeratorApplyRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMapRoute: AuthenticatedMapRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIssueIdRoute: AuthenticatedIssueIdRoute,
+  AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
