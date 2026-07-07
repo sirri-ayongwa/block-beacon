@@ -346,6 +346,11 @@ function IssueDetail() {
                       <div className="text-xs text-muted-foreground">
                         {event ? format(new Date(event.created_at), "MMM d, yyyy · h:mm a") : "Not yet"}
                       </div>
+                      {event && event.author_name && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          Updated by <span className="font-medium text-foreground/80">{event.author_name}</span>
+                        </div>
+                      )}
                     </div>
                   </li>
                 );
