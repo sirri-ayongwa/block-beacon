@@ -6,7 +6,7 @@ import { ArrowLeft, ThumbsUp, MapPin, User, EyeOff, ChevronLeft, ChevronRight, C
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { IssueComments } from "@/components/IssueComments";
-import { IssueChat } from "@/components/IssueChat";
+import { IssueChatFab } from "@/components/IssueChatFab";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useModeratorStatus } from "@/lib/roles";
 import { HANDOFF_NOTE, build311EmailBody, buildHandoffPdf } from "@/lib/handoff";
@@ -35,7 +35,7 @@ type IssueRow = {
 };
 
 type Photo = { id: string; path: string; url?: string };
-type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null };
+type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null; author_name?: string | null };
 type Voter = { user_id: string; created_at: string; display_name: string | null; is_anonymous: boolean };
 
 const STATUS_STEPS: Array<"open" | "acknowledged" | "fixed"> = ["open", "acknowledged", "fixed"];
@@ -73,7 +73,14 @@ function IssueDetail() {
       return;
     }
     setIssue(issueData as IssueRow);
-    setEvents((eventData ?? []) as StatusEvent[]);
+    const evts = (eventData ?? []) as StatusEvent[];
+    const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
+    if (authorIds.length) {
+      const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
+      const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
+      evts.forEach((e) => { e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null; });
+    }
+    setEvents(evts);
 
     // Reporter display name (respect anonymity)
     if (!issueData.is_anonymous) {
