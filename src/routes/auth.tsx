@@ -68,7 +68,9 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/map` },
+          options: {
+            emailRedirectTo: `${window.location.origin}${role === "moderator" ? "/moderator/apply" : "/map"}`,
+          },
         });
         if (error) throw error;
         toast.success("Account made! Check your email if confirmation is needed.");
@@ -76,7 +78,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      navigate({ to: "/map" });
+      navigate({ to: role === "moderator" ? "/moderator/apply" : "/map" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -95,7 +97,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/map" });
+    navigate({ to: role === "moderator" ? "/moderator/apply" : "/map" });
   }
 
   return (
@@ -108,13 +110,19 @@ function AuthPage() {
           BlockBeacon
         </Link>
         <div className="rounded-3xl border border-border bg-card p-6 shadow-xl shadow-primary/5">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-[11px] font-medium">
+            {role === "moderator" ? <><ShieldCheck size={12} /> Moderator sign-in</> : <><Users size={12} /> Neighbor sign-in</>}
+            <Link to="/join" className="underline ml-1">change</Link>
+          </div>
           <h1 className="text-2xl font-bold">
-            {mode === "signin" ? "Welcome back" : "Join your block"}
+            {mode === "signin" ? "Welcome back" : role === "moderator" ? "Verify your role" : "Join your block"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "signin"
               ? "Pick up where you left off on the neighborhood map."
-              : "One free account. Start reporting in under a minute."}
+              : role === "moderator"
+                ? "Create your account, then complete a short verification so your city badge appears on updates."
+                : "One free account. Start reporting in under a minute."}
           </p>
 
           <button
