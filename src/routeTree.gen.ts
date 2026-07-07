@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,12 +18,18 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -60,6 +67,11 @@ const AuthenticatedLeaderboardRoute =
     path: '/leaderboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedModeratorApplyRoute =
   AuthenticatedModeratorApplyRouteImport.update({
     id: '/apply',
@@ -75,7 +87,9 @@ const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRouteWithChildren
@@ -86,7 +100,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRouteWithChildren
@@ -99,7 +115,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
   '/_authenticated/moderator': typeof AuthenticatedModeratorRouteWithChildren
@@ -112,7 +130,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/join'
     | '/sitemap.xml'
+    | '/admin'
     | '/leaderboard'
     | '/map'
     | '/moderator'
@@ -123,7 +143,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/join'
     | '/sitemap.xml'
+    | '/admin'
     | '/leaderboard'
     | '/map'
     | '/moderator'
@@ -135,7 +157,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/join'
     | '/sitemap.xml'
+    | '/_authenticated/admin'
     | '/_authenticated/leaderboard'
     | '/_authenticated/map'
     | '/_authenticated/moderator'
@@ -148,6 +172,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  JoinRoute: typeof JoinRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
@@ -158,6 +183,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -209,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/moderator/apply': {
       id: '/_authenticated/moderator/apply'
       path: '/apply'
@@ -241,6 +280,7 @@ const AuthenticatedModeratorRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
   AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRouteWithChildren
@@ -249,6 +289,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
   AuthenticatedModeratorRoute: AuthenticatedModeratorRouteWithChildren,
@@ -263,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  JoinRoute: JoinRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport

@@ -18,7 +18,7 @@ function Index() {
           BlockBeacon
         </div>
         <Link
-          to="/auth"
+          to="/join"
           className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
         >
           Sign in
@@ -41,7 +41,7 @@ function Index() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                to="/auth"
+                to="/join"
                 className="rounded-full bg-primary px-6 py-3 font-medium text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90"
               >
                 Start reporting →

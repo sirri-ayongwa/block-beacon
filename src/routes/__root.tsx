@@ -127,6 +127,15 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // Apply persisted UI language + text direction (RTL for Arabic).
+    try {
+      const lang = typeof window !== "undefined" ? window.localStorage.getItem("bb.lang") : null;
+      if (lang && typeof document !== "undefined") {
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+      }
+    } catch { /* ignore */ }
+
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();

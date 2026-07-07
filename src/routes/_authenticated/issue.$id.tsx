@@ -6,7 +6,7 @@ import { ArrowLeft, ThumbsUp, MapPin, User, EyeOff, ChevronLeft, ChevronRight, C
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { IssueComments } from "@/components/IssueComments";
-import { IssueChat } from "@/components/IssueChat";
+import { IssueChatFab } from "@/components/IssueChatFab";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useModeratorStatus } from "@/lib/roles";
 import { HANDOFF_NOTE, build311EmailBody, buildHandoffPdf } from "@/lib/handoff";
@@ -35,7 +35,7 @@ type IssueRow = {
 };
 
 type Photo = { id: string; path: string; url?: string };
-type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null };
+type StatusEvent = { id: string; status: "open" | "acknowledged" | "fixed"; note: string | null; created_at: string; created_by: string | null; author_name?: string | null };
 type Voter = { user_id: string; created_at: string; display_name: string | null; is_anonymous: boolean };
 
 const STATUS_STEPS: Array<"open" | "acknowledged" | "fixed"> = ["open", "acknowledged", "fixed"];
@@ -73,7 +73,14 @@ function IssueDetail() {
       return;
     }
     setIssue(issueData as IssueRow);
-    setEvents((eventData ?? []) as StatusEvent[]);
+    const evts = (eventData ?? []) as StatusEvent[];
+    const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
+    if (authorIds.length) {
+      const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
+      const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
+      evts.forEach((e) => { e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null; });
+    }
+    setEvents(evts);
 
     // Reporter display name (respect anonymity)
     if (!issueData.is_anonymous) {
@@ -339,17 +346,22 @@ function IssueDetail() {
                       <div className="text-xs text-muted-foreground">
                         {event ? format(new Date(event.created_at), "MMM d, yyyy · h:mm a") : "Not yet"}
                       </div>
+                      {event && event.author_name && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          Updated by <span className="font-medium text-foreground/80">{event.author_name}</span>
+                        </div>
+                      )}
                     </div>
                   </li>
                 );
               })}
             </ol>
 
-            {(isReporter || isModerator) && (
+            {isModerator && (
               <div className="mt-4 border-t border-border pt-3 space-y-2">
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  {isModerator ? "Update status as moderator:" : "You reported this — update the status:"}
-                  {isModerator && (isVerifiedMod ? <VerifiedBadge /> : <span className="text-[10px] rounded-full bg-warning/15 text-warning px-1.5 py-0.5 font-semibold">Moderator</span>)}
+                  Update status as moderator:
+                  {isVerifiedMod ? <VerifiedBadge /> : <span className="text-[10px] rounded-full bg-warning/15 text-warning px-1.5 py-0.5 font-semibold">Moderator</span>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {STATUS_STEPS.map((s) => (
@@ -367,6 +379,11 @@ function IssueDetail() {
                 </div>
               </div>
             )}
+            {!isModerator && isReporter && (
+              <p className="mt-3 text-xs text-muted-foreground border-t border-border pt-3">
+                Only verified city moderators can change the status. Rally more upvotes to get one's attention.
+              </p>
+            )}
           </section>
 
           <IssueComments
@@ -376,7 +393,8 @@ function IssueDetail() {
             isVerifiedMod={isVerifiedMod}
           />
 
-          <IssueChat issueId={issue.id} currentUserId={me} />
+          {/* Ephemeral chat rendered as a floating FAB, scoped to this issueId. */}
+          <IssueChatFab issueId={issue.id} currentUserId={me} />
 
           {/* Upvoters */}
           <section className="rounded-2xl border border-border bg-card p-4">

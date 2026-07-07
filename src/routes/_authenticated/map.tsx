@@ -9,6 +9,8 @@ import { makePinIcon } from "@/components/IssuePinIcon";
 import { ReportSheet } from "@/components/ReportSheet";
 import { toast } from "sonner";
 import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink, Trophy, ShieldCheck } from "lucide-react";
+import { LanguageDropdown } from "@/components/LanguageDropdown";
+import { NotificationBell } from "@/components/NotificationBell";
 import { formatDistanceToNow } from "date-fns";
 import { COUNTRIES } from "@/lib/countries";
 import { listQueue, removeFromQueue, type QueuedReport } from "@/lib/offlineQueue";
@@ -333,6 +335,8 @@ function MapPage() {
           <Link to="/moderator" title="Moderator" className="rounded-full p-2 hover:bg-secondary">
             <ShieldCheck size={16} />
           </Link>
+          <LanguageDropdown />
+          <NotificationBell userId={userId} />
           <button
             onClick={signOut}
             title="Sign out"
