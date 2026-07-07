@@ -352,11 +352,11 @@ function IssueDetail() {
               })}
             </ol>
 
-            {(isReporter || isModerator) && (
+            {isModerator && (
               <div className="mt-4 border-t border-border pt-3 space-y-2">
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  {isModerator ? "Update status as moderator:" : "You reported this — update the status:"}
-                  {isModerator && (isVerifiedMod ? <VerifiedBadge /> : <span className="text-[10px] rounded-full bg-warning/15 text-warning px-1.5 py-0.5 font-semibold">Moderator</span>)}
+                  Update status as moderator:
+                  {isVerifiedMod ? <VerifiedBadge /> : <span className="text-[10px] rounded-full bg-warning/15 text-warning px-1.5 py-0.5 font-semibold">Moderator</span>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {STATUS_STEPS.map((s) => (
@@ -374,6 +374,11 @@ function IssueDetail() {
                 </div>
               </div>
             )}
+            {!isModerator && isReporter && (
+              <p className="mt-3 text-xs text-muted-foreground border-t border-border pt-3">
+                Only verified city moderators can change the status. Rally more upvotes to get one's attention.
+              </p>
+            )}
           </section>
 
           <IssueComments
@@ -383,7 +388,8 @@ function IssueDetail() {
             isVerifiedMod={isVerifiedMod}
           />
 
-          <IssueChat issueId={issue.id} currentUserId={me} />
+          {/* Ephemeral chat rendered as a floating FAB, scoped to this issueId. */}
+          <IssueChatFab issueId={issue.id} currentUserId={me} />
 
           {/* Upvoters */}
           <section className="rounded-2xl border border-border bg-card p-4">
