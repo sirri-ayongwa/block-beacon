@@ -1,12 +1,15 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
-import { MapPin } from "lucide-react";
+import { MapPin, ShieldCheck, Users } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    role: (search.role === "moderator" ? "moderator" : "neighbor") as "moderator" | "neighbor",
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — BlockBeacon" },
@@ -17,6 +20,23 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { role: roleParam } = useSearch({ from: "/auth" }) as { role: "moderator" | "neighbor" };
+  // Prefer URL param, then persisted intent, then default neighbor.
+  const [role] = useState<"moderator" | "neighbor">(() => {
+    if (roleParam === "moderator") return "moderator";
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem("bb.signup_role");
+      if (stored === "moderator") return "moderator";
+    }
+    return "neighbor";
+  });
+
+  // Persist for the _authenticated resume-onboarding logic.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (role === "moderator") window.localStorage.setItem("bb.signup_role", "moderator");
+  }, [role]);
+
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,9 +44,21 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/map" });
+      if (!data.user) return;
+      // If they picked moderator, always resume onboarding until profile exists.
+      if (role === "moderator") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("moderator_profiles" as any) as any)
+          .select("id").eq("id", data.user.id).maybeSingle()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .then(({ data: prof }: any) => {
+            navigate({ to: prof ? "/moderator" : "/moderator/apply" });
+          });
+      } else {
+        navigate({ to: "/map" });
+      }
     });
-  }, [navigate]);
+  }, [navigate, role]);
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
