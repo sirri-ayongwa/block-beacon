@@ -15,6 +15,7 @@ import { Route as JoinRouteImport } from './routes/join'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
@@ -49,6 +50,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
+  id: '/legal/privacy',
+  path: '/legal/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/map': typeof AuthenticatedMapRoute
   '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
 }
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/map': typeof AuthenticatedMapRoute
   '/_authenticated/moderator': typeof AuthenticatedModeratorRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
   '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
 }
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/moderator'
     | '/settings'
+    | '/legal/privacy'
     | '/issue/$id'
     | '/moderator/apply'
   fileRoutesByTo: FileRoutesByTo
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/moderator'
     | '/settings'
+    | '/legal/privacy'
     | '/issue/$id'
     | '/moderator/apply'
   id:
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/_authenticated/map'
     | '/_authenticated/moderator'
     | '/_authenticated/settings'
+    | '/legal/privacy'
     | '/_authenticated/issue/$id'
     | '/_authenticated/moderator_/apply'
   fileRoutesById: FileRoutesById
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacy': {
+      id: '/legal/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
