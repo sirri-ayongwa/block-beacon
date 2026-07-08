@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, BadgeCheck, Building2, ShieldCheck, MailCheck } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/moderator/apply")({
+export const Route = createFileRoute("/_authenticated/moderator_/apply")({
   component: ModeratorApply,
   head: () => ({
     meta: [

@@ -18,8 +18,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
+import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator_.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -67,16 +66,11 @@ const AuthenticatedLeaderboardRoute =
     path: '/leaderboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedModeratorApplyRoute =
   AuthenticatedModeratorApplyRouteImport.update({
-    id: '/apply',
-    path: '/apply',
-    getParentRoute: () => AuthenticatedModeratorRoute,
+    id: '/moderator_/apply',
+    path: '/moderator/apply',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
   id: '/issue/$id',
@@ -89,10 +83,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
-  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
@@ -102,10 +95,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
-  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
@@ -117,13 +109,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
-  '/_authenticated/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/_authenticated/moderator': typeof AuthenticatedModeratorRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
-  '/_authenticated/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,7 +123,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/admin'
     | '/leaderboard'
     | '/map'
     | '/moderator'
@@ -145,7 +135,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/admin'
     | '/leaderboard'
     | '/map'
     | '/moderator'
@@ -159,13 +148,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/_authenticated/admin'
     | '/_authenticated/leaderboard'
     | '/_authenticated/map'
     | '/_authenticated/moderator'
     | '/_authenticated/settings'
     | '/_authenticated/issue/$id'
-    | '/_authenticated/moderator/apply'
+    | '/_authenticated/moderator_/apply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -241,19 +229,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/moderator/apply': {
-      id: '/_authenticated/moderator/apply'
-      path: '/apply'
+    '/_authenticated/moderator_/apply': {
+      id: '/_authenticated/moderator_/apply'
+      path: '/moderator/apply'
       fullPath: '/moderator/apply'
       preLoaderRoute: typeof AuthenticatedModeratorApplyRouteImport
-      parentRoute: typeof AuthenticatedModeratorRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/issue/$id': {
       id: '/_authenticated/issue/$id'
@@ -265,36 +246,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedModeratorRouteChildren {
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
+  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
   AuthenticatedModeratorApplyRoute: typeof AuthenticatedModeratorApplyRoute
 }
 
-const AuthenticatedModeratorRouteChildren: AuthenticatedModeratorRouteChildren =
-  {
-    AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
-  }
-
-const AuthenticatedModeratorRouteWithChildren =
-  AuthenticatedModeratorRoute._addFileChildren(
-    AuthenticatedModeratorRouteChildren,
-  )
-
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
-  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
-  AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRouteWithChildren
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
-}
-
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
-  AuthenticatedModeratorRoute: AuthenticatedModeratorRouteWithChildren,
+  AuthenticatedModeratorRoute: AuthenticatedModeratorRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIssueIdRoute: AuthenticatedIssueIdRoute,
+  AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -310,3 +277,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
