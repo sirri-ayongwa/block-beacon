@@ -9,19 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LegalTermsRouteImport } from './routes/legal.terms'
+import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedModeratorRouteImport } from './routes/_authenticated/moderator'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator.apply'
+import { Route as ApiPublicWeeklyDigestRouteImport } from './routes/api/public/weekly-digest'
+import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator_.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -46,6 +54,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalTermsRoute = LegalTermsRouteImport.update({
+  id: '/legal/terms',
+  path: '/legal/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
+  id: '/legal/privacy',
+  path: '/legal/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -67,16 +85,16 @@ const AuthenticatedLeaderboardRoute =
     path: '/leaderboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ApiPublicWeeklyDigestRoute = ApiPublicWeeklyDigestRouteImport.update({
+  id: '/api/public/weekly-digest',
+  path: '/api/public/weekly-digest',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedModeratorApplyRoute =
   AuthenticatedModeratorApplyRouteImport.update({
-    id: '/apply',
-    path: '/apply',
-    getParentRoute: () => AuthenticatedModeratorRoute,
+    id: '/moderator_/apply',
+    path: '/moderator/apply',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedIssueIdRoute = AuthenticatedIssueIdRouteImport.update({
   id: '/issue/$id',
@@ -89,26 +107,32 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
-  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/map': typeof AuthenticatedMapRoute
-  '/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/moderator': typeof AuthenticatedModeratorRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,13 +141,16 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
-  '/_authenticated/moderator': typeof AuthenticatedModeratorRouteWithChildren
+  '/_authenticated/moderator': typeof AuthenticatedModeratorRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
-  '/_authenticated/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,26 +159,32 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/admin'
+    | '/verify-email'
     | '/leaderboard'
     | '/map'
     | '/moderator'
     | '/settings'
+    | '/legal/privacy'
+    | '/legal/terms'
     | '/issue/$id'
     | '/moderator/apply'
+    | '/api/public/weekly-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/admin'
+    | '/verify-email'
     | '/leaderboard'
     | '/map'
     | '/moderator'
     | '/settings'
+    | '/legal/privacy'
+    | '/legal/terms'
     | '/issue/$id'
     | '/moderator/apply'
+    | '/api/public/weekly-digest'
   id:
     | '__root__'
     | '/'
@@ -159,13 +192,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join'
     | '/sitemap.xml'
-    | '/_authenticated/admin'
+    | '/verify-email'
     | '/_authenticated/leaderboard'
     | '/_authenticated/map'
     | '/_authenticated/moderator'
     | '/_authenticated/settings'
+    | '/legal/privacy'
+    | '/legal/terms'
     | '/_authenticated/issue/$id'
-    | '/_authenticated/moderator/apply'
+    | '/_authenticated/moderator_/apply'
+    | '/api/public/weekly-digest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -174,10 +210,21 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   JoinRoute: typeof JoinRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
+  LegalTermsRoute: typeof LegalTermsRoute
+  ApiPublicWeeklyDigestRoute: typeof ApiPublicWeeklyDigestRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -213,6 +260,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/terms': {
+      id: '/legal/terms'
+      path: '/legal/terms'
+      fullPath: '/legal/terms'
+      preLoaderRoute: typeof LegalTermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacy': {
+      id: '/legal/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -241,19 +302,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/api/public/weekly-digest': {
+      id: '/api/public/weekly-digest'
+      path: '/api/public/weekly-digest'
+      fullPath: '/api/public/weekly-digest'
+      preLoaderRoute: typeof ApiPublicWeeklyDigestRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/moderator/apply': {
-      id: '/_authenticated/moderator/apply'
-      path: '/apply'
+    '/_authenticated/moderator_/apply': {
+      id: '/_authenticated/moderator_/apply'
+      path: '/moderator/apply'
       fullPath: '/moderator/apply'
       preLoaderRoute: typeof AuthenticatedModeratorApplyRouteImport
-      parentRoute: typeof AuthenticatedModeratorRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/issue/$id': {
       id: '/_authenticated/issue/$id'
@@ -265,36 +326,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedModeratorRouteChildren {
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
+  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
   AuthenticatedModeratorApplyRoute: typeof AuthenticatedModeratorApplyRoute
 }
 
-const AuthenticatedModeratorRouteChildren: AuthenticatedModeratorRouteChildren =
-  {
-    AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
-  }
-
-const AuthenticatedModeratorRouteWithChildren =
-  AuthenticatedModeratorRoute._addFileChildren(
-    AuthenticatedModeratorRouteChildren,
-  )
-
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
-  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
-  AuthenticatedModeratorRoute: typeof AuthenticatedModeratorRouteWithChildren
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedIssueIdRoute: typeof AuthenticatedIssueIdRoute
-}
-
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
-  AuthenticatedModeratorRoute: AuthenticatedModeratorRouteWithChildren,
+  AuthenticatedModeratorRoute: AuthenticatedModeratorRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIssueIdRoute: AuthenticatedIssueIdRoute,
+  AuthenticatedModeratorApplyRoute: AuthenticatedModeratorApplyRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -306,6 +353,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   JoinRoute: JoinRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
+  LegalTermsRoute: LegalTermsRoute,
+  ApiPublicWeeklyDigestRoute: ApiPublicWeeklyDigestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

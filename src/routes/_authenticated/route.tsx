@@ -12,6 +12,10 @@ export const Route = createFileRoute("/_authenticated")({
     // /moderator/apply — even after a logout / re-login. Cleared once they
     // have a moderator_profiles row.
     try {
+      // Email verification gate — block app access until email is confirmed.
+      if (!data.user.email_confirmed_at) {
+        throw redirect({ to: "/verify-email" });
+      }
       const intent = typeof window !== "undefined" ? window.localStorage.getItem("bb.signup_role") : null;
       if (intent === "moderator" && !location.pathname.startsWith("/moderator/apply")) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

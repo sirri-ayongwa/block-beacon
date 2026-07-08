@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Instagram, Twitter, Facebook, Github, Linkedin, Youtube, Mail, MapPin } from "lucide-react";
+import { Instagram, Twitter, Facebook, Github, Linkedin, Youtube, MapPin } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ContactModal } from "./ContactModal";
 
@@ -46,24 +46,23 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold">Community</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/map" className="hover:text-foreground">Explore the map</Link></li>
-            <li><Link to="/auth" className="hover:text-foreground">Create an account</Link></li>
             <li>
               <button onClick={() => setContactOpen(true)} className="hover:text-foreground text-left">
                 Contact us
               </button>
             </li>
-            <li><a href="mailto:hello@blockbeacon.app" className="hover:text-foreground inline-flex items-center gap-1"><Mail size={12} /> hello@blockbeacon.app</a></li>
+            <li><button onClick={() => setContactOpen(true)} className="hover:text-foreground text-left">Report a bug</button></li>
+            <li><button onClick={() => setContactOpen(true)} className="hover:text-foreground text-left">Partner with us</button></li>
           </ul>
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold">Resources</h3>
+          <h3 className="text-sm font-semibold">Legal</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <li><Link to="/legal/privacy" className="hover:text-foreground">Privacy policy</Link></li>
+            <li><Link to="/legal/terms" className="hover:text-foreground">Terms of service</Link></li>
             <li><a href="/sitemap.xml" className="hover:text-foreground">Sitemap</a></li>
             <li><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">Map data © OpenStreetMap</a></li>
-            <li><button onClick={() => setContactOpen(true)} className="hover:text-foreground text-left">Report a bug</button></li>
-            <li><button onClick={() => setContactOpen(true)} className="hover:text-foreground text-left">Partner with us</button></li>
           </ul>
         </div>
       </div>

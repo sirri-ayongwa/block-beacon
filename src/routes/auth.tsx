@@ -65,18 +65,34 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (role === "moderator") {
+          const domain = email.split("@")[1]?.toLowerCase() ?? "";
+          const blocked = ["gmail.com", "yahoo.com", "yahoo.co.uk", "outlook.com", "hotmail.com", "live.com", "icloud.com", "aol.com", "proton.me", "protonmail.com"];
+          if (!domain || blocked.includes(domain)) {
+            toast.error("Moderators must sign up with an official work / city-hall email — free providers (Gmail, Yahoo, Outlook, etc.) aren't accepted.");
+            setBusy(false);
+            return;
+          }
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}${role === "moderator" ? "/moderator/apply" : "/map"}`,
+            emailRedirectTo: `${window.location.origin}/verify-email`,
           },
         });
         if (error) throw error;
-        toast.success("Account made! Check your email if confirmation is needed.");
+        toast.success("Account created — check your inbox for the verification link.");
+        navigate({ to: "/verify-email" });
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user && !userData.user.email_confirmed_at) {
+          navigate({ to: "/verify-email" });
+          return;
+        }
       }
       navigate({ to: role === "moderator" ? "/moderator/apply" : "/map" });
     } catch (err) {
