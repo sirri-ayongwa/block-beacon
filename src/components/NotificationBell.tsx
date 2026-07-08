@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { playChime } from "@/lib/notify";
 
 type Notif = {
   id: string;
@@ -55,7 +56,13 @@ export function NotificationBell({ userId }: { userId: string | null }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
           (payload) => {
             const n = payload.new as Notif;
-            toast(n.title, { description: n.body ?? undefined });
+            const urgent = n.kind === "auto_handoff_ready";
+            if (urgent) {
+              try { playChime(); } catch { /* noop */ }
+              toast.warning(n.title, { description: n.body ?? undefined, duration: 8000 });
+            } else {
+              toast(n.title, { description: n.body ?? undefined });
+            }
             load();
           })
       .subscribe();
