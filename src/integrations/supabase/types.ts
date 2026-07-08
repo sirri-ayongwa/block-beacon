@@ -221,6 +221,7 @@ export type Database = {
           lat: number
           lng: number
           photo_path: string | null
+          photo_phash: string | null
           reporter_id: string
           status: Database["public"]["Enums"]["issue_status"]
           title: string
@@ -241,6 +242,7 @@ export type Database = {
           lat: number
           lng: number
           photo_path?: string | null
+          photo_phash?: string | null
           reporter_id: string
           status?: Database["public"]["Enums"]["issue_status"]
           title: string
@@ -261,6 +263,7 @@ export type Database = {
           lat?: number
           lng?: number
           photo_path?: string | null
+          photo_phash?: string | null
           reporter_id?: string
           status?: Database["public"]["Enums"]["issue_status"]
           title?: string
@@ -271,31 +274,46 @@ export type Database = {
       }
       moderator_profiles: {
         Row: {
+          ai_reason: string | null
+          ai_reviewed_at: string | null
+          ai_verified: boolean
           community: string
           created_at: string
           gov_email: string
           id: string
           organization: string
+          proof_kind: string | null
+          proof_photo_path: string | null
           proof_url: string | null
           updated_at: string
           verified: boolean
         }
         Insert: {
+          ai_reason?: string | null
+          ai_reviewed_at?: string | null
+          ai_verified?: boolean
           community: string
           created_at?: string
           gov_email: string
           id: string
           organization: string
+          proof_kind?: string | null
+          proof_photo_path?: string | null
           proof_url?: string | null
           updated_at?: string
           verified?: boolean
         }
         Update: {
+          ai_reason?: string | null
+          ai_reviewed_at?: string | null
+          ai_verified?: boolean
           community?: string
           created_at?: string
           gov_email?: string
           id?: string
           organization?: string
+          proof_kind?: string | null
+          proof_photo_path?: string | null
           proof_url?: string | null
           updated_at?: string
           verified?: boolean
@@ -351,6 +369,7 @@ export type Database = {
           country: string | null
           created_at: string
           default_anonymous: boolean
+          digest_last_sent_at: string | null
           digest_subscribed: boolean
           display_name: string | null
           home_lat: number | null
@@ -363,6 +382,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           default_anonymous?: boolean
+          digest_last_sent_at?: string | null
           digest_subscribed?: boolean
           display_name?: string | null
           home_lat?: number | null
@@ -375,6 +395,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           default_anonymous?: boolean
+          digest_last_sent_at?: string | null
           digest_subscribed?: boolean
           display_name?: string | null
           home_lat?: number | null
