@@ -24,9 +24,13 @@ export const verifyModeratorProof = createServerFn({ method: "POST" })
       return { approved: false, reason: "Proof file must be uploaded to your own folder." };
     }
 
-    // Download the image as bytes using the user's session (RLS-scoped)
+    // Download the document as bytes using the user's session (RLS-scoped)
     const { data: blob, error: dlErr } = await supabase.storage.from("moderator-proofs").download(data.path);
     if (dlErr || !blob) return { approved: false, reason: "Couldn't read the uploaded document." };
+    
+    // Determine MIME type based on file extension or blob type
+    const mimeType = blob.type || (data.path.endsWith('.pdf') ? 'application/pdf' : data.path.endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'image/webp');
+    
     const buffer = new Uint8Array(await blob.arrayBuffer());
     // Base64 encode (chunked to avoid stack overflows)
     let binary = "";
@@ -41,8 +45,8 @@ export const verifyModeratorProof = createServerFn({ method: "POST" })
 
     const system =
       data.kind === "letter"
-        ? `You are verifying an official authorization letter for a city-hall moderator role. Approve if the document shows ANY of: an official city-hall / municipal / county / state letterhead, letterhead logos of a city/government body, mention of city-hall, city council, mayor, governor, senator, state senate, department head, public works, police chief, or another clear organizational or political title, or a signed authorization from such an office. Reject only if the document is blank, unreadable, clearly personal (family photo, receipt, screenshot of chat), or obviously fabricated. Respond with a strict JSON object: {"approved": boolean, "reason": string (one short sentence), "category": "letter"}.`
-        : `You are verifying a city-hall employee ID badge photo. Approve if the image shows ANY of: an active-looking employee badge with city-hall, municipality, government, county, state agency, public-works, police/fire/EMS, or business/organizational markings (name, title, logo, badge number, expiry). Reject only if the image is blank, unreadable, obviously personal (selfie, unrelated object), or clearly fabricated. Respond with a strict JSON object: {"approved": boolean, "reason": string (one short sentence), "category": "badge"}.`;
+        ? `You are verifying an official authorization letter for a city-hall moderator role. Approve if the document shows ANY of: an official city-hall / municipal / county / state letterhead, letterhead logos of a city/government body, mention of city-hall, city council, mayor, governor, senator, state senate, department head, public works, police chief, or another clear organizational or political title, or a signed authorization from such an office. Reject only if the document is blank, unreadable, clearly personal (family photo, receipt, screenshot of chat), or obviously fabricated. When approving, specify what you detected (e.g., "City Hall Letterhead detected", "Mayor Authorization detected", "Senate Authorization detected", "Department Head Credentials detected"). Respond with a strict JSON object: {"approved": boolean, "reason": string (specific detection or one short rejection sentence), "category": "letter"}.`
+        : `You are verifying a city-hall employee ID badge photo. Approve if the image shows ANY of: an active-looking employee badge with city-hall, municipality, government, county, state agency, public-works, police/fire/EMS, or business/organizational markings (name, title, logo, badge number, expiry). Reject only if the image is blank, unreadable, obviously personal (selfie, unrelated object), or clearly fabricated. When approving, specify what you detected (e.g., "City Hall ID Badge detected", "Municipal Employee Badge detected", "Government Agency Credentials detected"). Respond with a strict JSON object: {"approved": boolean, "reason": string (specific detection or one short rejection sentence), "category": "badge"}.`;
 
     const body = {
       model: "google/gemini-2.5-flash",
@@ -53,7 +57,7 @@ export const verifyModeratorProof = createServerFn({ method: "POST" })
           role: "user",
           content: [
             { type: "text", text: `Review this ${data.kind === "letter" ? "authorization letter" : "employee ID badge"} and return the JSON verdict.` },
-            { type: "image_url", image_url: { url: `data:image/webp;base64,${b64}` } },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${b64}` } },
           ],
         },
       ],

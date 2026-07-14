@@ -8,7 +8,7 @@ import { CATEGORY_MAP, CATEGORIES, STATUS_LABEL, type IssueCategory } from "@/li
 import { makePinIcon } from "@/components/IssuePinIcon";
 import { ReportSheet } from "@/components/ReportSheet";
 import { toast } from "sonner";
-import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink, Trophy, ShieldCheck } from "lucide-react";
+import { MapPin, Plus, ThumbsUp, LogOut, Filter, Locate, X, Settings, ExternalLink, Trophy } from "lucide-react";
 import { LanguageDropdown } from "@/components/LanguageDropdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { formatDistanceToNow } from "date-fns";
@@ -18,6 +18,7 @@ import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
 import { playChime, browserNotify, requestBrowserNotifPermission } from "@/lib/notify";
 import { getNotifPrefs } from "@/lib/notifPrefs";
 import { AddressPicker, type ResolvedAddress } from "@/components/AddressPicker";
+import { useModeratorStatus } from "@/lib/roles";
 
 export const Route = createFileRoute("/_authenticated/map")({
   component: MapPage,
@@ -85,6 +86,7 @@ function MapPage() {
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
   const mapRef = useRef<LeafletMap | null>(null);
   const prevStatusRef = useRef<Map<string, string>>(new Map());
+  const { isModerator } = useModeratorStatus();
 
   useEffect(() => {
     (async () => {
@@ -332,9 +334,6 @@ function MapPage() {
           <Link to="/leaderboard" title="Leaderboard" className="rounded-full p-2 hover:bg-secondary">
             <Trophy size={16} />
           </Link>
-          <Link to="/moderator" title="Moderator" className="rounded-full p-2 hover:bg-secondary">
-            <ShieldCheck size={16} />
-          </Link>
           <LanguageDropdown />
           <NotificationBell userId={userId} />
           <button
@@ -492,7 +491,7 @@ function MapPage() {
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {!homeAppliedFromProfile && <LocateOnMount setCenter={setCenter} />}
-          <MapClickHandler onPick={onPickSpot} />
+          {!isModerator && <MapClickHandler onPick={onPickSpot} />}
           {filtered.map((issue) => (
             <Marker
               key={issue.id}
@@ -524,23 +523,27 @@ function MapPage() {
           <Locate size={18} />
         </button>
 
-        {/* Main report CTA */}
-        <button
-          onClick={() => {
-            if (!mapRef.current) return;
-            const c = mapRef.current.getCenter();
-            onPickSpot(c.lat, c.lng);
-          }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-accent text-accent-foreground pl-4 pr-5 py-3 font-medium shadow-2xl shadow-accent/40 flex items-center gap-2 hover:opacity-95 active:scale-95 transition"
-        >
-          <Plus size={18} strokeWidth={2.5} />
-          Report an issue
-        </button>
+        {/* Main report CTA - Hidden for moderators */}
+        {!isModerator && (
+          <>
+            <button
+              onClick={() => {
+                if (!mapRef.current) return;
+                const c = mapRef.current.getCenter();
+                onPickSpot(c.lat, c.lng);
+              }}
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-accent text-accent-foreground pl-4 pr-5 py-3 font-medium shadow-2xl shadow-accent/40 flex items-center gap-2 hover:opacity-95 active:scale-95 transition"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              Report an issue
+            </button>
 
-        {/* Hint */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-card/95 backdrop-blur border border-border px-3 py-1 text-[11px] text-muted-foreground shadow-sm">
-          Tap the map to drop a pin, or use the button below
-        </div>
+            {/* Hint */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-card/95 backdrop-blur border border-border px-3 py-1 text-[11px] text-muted-foreground shadow-sm">
+              Tap the map to drop a pin, or use the button below
+            </div>
+          </>
+        )}
       </div>
 
       {/* Selected issue card */}

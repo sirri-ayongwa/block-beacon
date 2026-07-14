@@ -62,13 +62,24 @@ function ModeratorApply() {
     const f = e.target.files?.[0];
     if (!f) return;
     try {
-      const blob = await compressImage(f);
+      // For images, compress them; for PDFs/DOCX, use as-is
+      let blob: Blob;
+      if (f.type.startsWith('image/')) {
+        blob = await compressImage(f);
+      } else {
+        blob = f;
+      }
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setFile(blob);
-      setPreviewUrl(URL.createObjectURL(blob));
+      // Only create preview URL for images
+      if (f.type.startsWith('image/')) {
+        setPreviewUrl(URL.createObjectURL(blob));
+      } else {
+        setPreviewUrl(null);
+      }
       setState({ phase: "idle" });
     } catch {
-      toast.error("Couldn't read that image — try a clearer photo.");
+      toast.error("Couldn't read that file — try a different document.");
     }
   }
 
@@ -85,8 +96,16 @@ function ModeratorApply() {
     }
     setState({ phase: "checking" });
     try {
-      const path = `${userId}/${crypto.randomUUID()}.webp`;
-      const { error: upErr } = await supabase.storage.from("moderator-proofs").upload(path, file, { contentType: "image/webp" });
+      // Determine file extension based on file type
+      const fileType = file.type;
+      let extension = '.webp';
+      if (fileType === 'application/pdf') extension = '.pdf';
+      else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') extension = '.docx';
+      
+      const path = `${userId}/${crypto.randomUUID()}${extension}`;
+      const { error: upErr } = await supabase.storage.from("moderator-proofs").upload(path, file, { 
+        contentType: fileType
+      });
       if (upErr) throw upErr;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,10 +148,10 @@ function ModeratorApply() {
         <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
           <div className="flex items-center gap-2">
             <BadgeCheck size={18} className="text-primary" />
-            <h2 className="font-semibold">One quick check by our AI reviewer</h2>
+            <h2 className="font-semibold">Verification Panel</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Upload one document that proves you work with a city-hall department. Our AI reviewer approves you instantly when it spots official letterhead, city-hall mentions, an active employee ID, or clear organizational/political titles (mayor, senator, governor, state senate, department head).
+            Upload a document that has city-hall mention, city-hall letterhead, an active employee ID, or clear mentions of organizational/political titles (mayor, senator, governor, state senate, department head).
           </p>
           {existing?.verified && (
             <div className="rounded-xl px-3 py-2 text-xs bg-success/10 text-success border border-success/30">
@@ -190,22 +209,28 @@ function ModeratorApply() {
             <div className="mt-3 rounded-xl border-2 border-dashed border-border p-4 text-center">
               {previewUrl ? (
                 <img src={previewUrl} alt="Proof preview" className="max-h-56 mx-auto rounded-lg" />
+              ) : file ? (
+                <div className="py-6">
+                  <FileText size={40} className="mx-auto text-primary mb-2" />
+                  <div className="text-xs text-muted-foreground">Document uploaded</div>
+                </div>
               ) : (
                 <div className="text-xs text-muted-foreground py-6">No document uploaded yet</div>
               )}
-              <input ref={inputRef} type="file" accept="image/*"
+              <input ref={inputRef} type="file" 
+                accept={proofKind === "letter" ? ".pdf,.docx,.png" : ".png,.jpg,.jpeg"}
                 capture={proofKind === "badge" ? "environment" : undefined}
                 onChange={onPickFile} className="hidden" />
               <button type="button" onClick={() => inputRef.current?.click()}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs hover:bg-secondary">
-                <Upload size={12} /> {previewUrl ? "Replace" : proofKind === "badge" ? "Upload or take photo" : "Upload document"}
+                <Upload size={12} /> {previewUrl || file ? "Replace" : proofKind === "badge" ? "Upload or take photo" : "Upload document"}
               </button>
             </div>
           </div>
 
           <button type="submit" disabled={state.phase === "checking" || !file}
             className="w-full rounded-full bg-primary py-3 font-medium text-primary-foreground disabled:opacity-50 hover:opacity-90">
-            {state.phase === "checking" ? "Reviewing…" : "Submit for AI review"}
+            {state.phase === "checking" ? "Verifying…" : "Submit for review"}
           </button>
         </form>
       </main>
@@ -216,8 +241,8 @@ function ModeratorApply() {
             {state.phase === "checking" && (
               <>
                 <Loader2 size={40} className="mx-auto animate-spin text-primary" />
-                <h3 className="mt-4 font-display text-xl font-bold">Reviewing your document</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Our AI is checking for city-hall letterhead, employee badge details, and official titles. This usually takes a few seconds.</p>
+                <h3 className="mt-4 font-display text-xl font-bold">Verifying your document</h3>
+                <p className="mt-2 text-sm text-muted-foreground">Please wait while we verify your credentials.</p>
               </>
             )}
             {state.phase === "approved" && (

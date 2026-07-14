@@ -3,7 +3,7 @@
 // dictionary of core UI strings; the rest of the app stays in English
 // (a fuller i18n pass would be a follow-up).
 
-export type LangCode = "en" | "fr" | "es" | "pt" | "de" | "it" | "ar" | "sw" | "zh" | "hi" | "ru";
+export type LangCode = "en" | "fr" | "es" | "pt" | "de" | "it" | "ar" | "sw" | "zh" | "hi" | "ru" | "bn";
 
 export const LANG_NAMES: Record<LangCode, string> = {
   en: "English",
@@ -17,6 +17,7 @@ export const LANG_NAMES: Record<LangCode, string> = {
   zh: "中文",
   hi: "हिन्दी",
   ru: "Русский",
+  bn: "বাংলা",
 };
 
 // 2-3 language options per country code (ISO2). Anything not listed falls
@@ -52,6 +53,7 @@ export const COUNTRY_LANGS: Record<string, LangCode[]> = {
   BE: ["fr", "de"],
   CH: ["de", "fr", "it"],
   AT: ["de", "en"],
+  BD: ["en", "bn"],
 };
 
 export function langsForCountry(code: string | null | undefined): LangCode[] {
@@ -158,6 +160,15 @@ const DICT: Record<LangCode, Record<string, string>> = {
     settings: "Настройки",
     leaderboard: "Рейтинг",
     moderator: "Модератор",
+  },
+  bn: {
+    reportAnIssue: "একটি সমস্যা রিপোর্ট করুন",
+    yourNeighborhood: "আপনার প্রতিবেশী",
+    upvote: "সমর্থন করুন",
+    signIn: "সাইন ইন করুন",
+    settings: "সেটিংস",
+    leaderboard: "লিডারবোর্ড",
+    moderator: "মডারেটর",
   },
 };
 

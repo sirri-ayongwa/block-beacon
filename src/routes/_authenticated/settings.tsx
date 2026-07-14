@@ -142,12 +142,28 @@ function SettingsPage() {
       toast.error("This device can't show notifications");
       return;
     }
-    if (Notification.permission === "granted") {
-      setNotifOn(true);
+    
+    // If already granted, turn off
+    if (Notification.permission === "granted" && notifOn) {
+      setNotifOn(false);
+      toast.success("Notifications turned off");
       return;
     }
-    requestBrowserNotifPermission();
-    setTimeout(() => setNotifOn(Notification.permission === "granted"), 500);
+    
+    // If not granted, request permission
+    if (Notification.permission !== "granted") {
+      requestBrowserNotifPermission();
+      setTimeout(() => {
+        const granted = Notification.permission === "granted";
+        setNotifOn(granted);
+        if (granted) {
+          toast.success("Notifications turned on");
+        }
+      }, 500);
+    } else {
+      setNotifOn(true);
+      toast.success("Notifications turned on");
+    }
   }
 
   if (loading) {
@@ -302,7 +318,7 @@ function SettingsPage() {
             onClick={toggleNotif}
             className="text-xs rounded-full border border-border bg-background px-3 py-1.5 hover:bg-secondary"
           >
-            {notifOn ? "Notifications are on ✓" : "Turn on notifications"}
+            {notifOn ? "Turn off notifications" : "Turn on notifications"}
           </button>
 
           <div className="mt-2 divide-y divide-border rounded-xl border border-border">
