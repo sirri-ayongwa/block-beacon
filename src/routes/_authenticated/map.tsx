@@ -19,6 +19,7 @@ import { playChime, browserNotify, requestBrowserNotifPermission } from "@/lib/n
 import { getNotifPrefs } from "@/lib/notifPrefs";
 import { AddressPicker, type ResolvedAddress } from "@/components/AddressPicker";
 import { useModeratorStatus } from "@/lib/roles";
+import { useT } from "@/lib/useT";
 
 export const Route = createFileRoute("/_authenticated/map")({
   component: MapPage,
@@ -87,6 +88,7 @@ function MapPage() {
   const mapRef = useRef<LeafletMap | null>(null);
   const prevStatusRef = useRef<Map<string, string>>(new Map());
   const { isModerator } = useModeratorStatus();
+  const { t } = useT();
 
   useEffect(() => {
     (async () => {
@@ -319,26 +321,26 @@ function MapPage() {
             onClick={() => setShowLocations((s) => !s)}
             className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
-            <MapPin size={13} /> {country || "Location"}
+            <MapPin size={13} /> {country || t("location")}
           </button>
           <button
             onClick={() => setShowFilters((s) => !s)}
             className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
             <Filter size={13} />
-            {activeFilterCount > 0 ? `${activeFilterCount} filter${activeFilterCount > 1 ? "s" : ""}` : "Filter"}
+            {activeFilterCount > 0 ? `${activeFilterCount} ${t("filters")}` : t("filter")}
           </button>
-          <Link to="/settings" title="Settings" className="rounded-full p-2 hover:bg-secondary">
+          <Link to="/settings" title={t("settings")} className="rounded-full p-2 hover:bg-secondary">
             <Settings size={16} />
           </Link>
-          <Link to="/leaderboard" title="Leaderboard" className="rounded-full p-2 hover:bg-secondary">
+          <Link to="/leaderboard" title={t("leaderboard")} className="rounded-full p-2 hover:bg-secondary">
             <Trophy size={16} />
           </Link>
           <LanguageDropdown />
           <NotificationBell userId={userId} />
           <button
             onClick={signOut}
-            title="Sign out"
+            title={t("signOut")}
             className="rounded-full p-2 hover:bg-secondary"
           >
             <LogOut size={16} />
@@ -517,7 +519,7 @@ function MapPage() {
         {/* Locate me */}
         <button
           onClick={locateMe}
-          title="Find me"
+          title={t("findMe")}
           className="absolute bottom-24 right-4 z-[400] h-11 w-11 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-secondary"
         >
           <Locate size={18} />
@@ -535,12 +537,12 @@ function MapPage() {
               className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-accent text-accent-foreground pl-4 pr-5 py-3 font-medium shadow-2xl shadow-accent/40 flex items-center gap-2 hover:opacity-95 active:scale-95 transition"
             >
               <Plus size={18} strokeWidth={2.5} />
-              Report an issue
+              {t("reportAnIssue")}
             </button>
 
             {/* Hint */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] rounded-full bg-card/95 backdrop-blur border border-border px-3 py-1 text-[11px] text-muted-foreground shadow-sm">
-              Tap the map to drop a pin, or use the button below
+              {t("tapToDropPin")}
             </div>
           </>
         )}
@@ -599,14 +601,14 @@ function MapPage() {
               }`}
             >
               <ThumbsUp size={14} />
-              {myVotes.has(selected.id) ? "You upvoted" : "Upvote"} · {selected.upvote_count}
+              {myVotes.has(selected.id) ? t("youUpvoted") : t("upvote")} · {selected.upvote_count}
             </button>
             <Link
               to="/issue/$id"
               params={{ id: selected.id }}
               className="rounded-full py-2 px-3 text-sm font-medium border border-border bg-background hover:bg-secondary flex items-center gap-1.5"
             >
-              Details <ExternalLink size={12} />
+              {t("details")} <ExternalLink size={12} />
             </Link>
           </div>
         </div>

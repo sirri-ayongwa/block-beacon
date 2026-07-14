@@ -8,6 +8,7 @@ import { useModeratorStatus } from "@/lib/roles";
 import { CATEGORY_MAP, STATUS_LABEL, type IssueCategory } from "@/lib/categories";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { build311EmailBody, buildHandoffPdf, HANDOFF_NOTE, type HandoffIssue } from "@/lib/handoff";
+import { useT } from "@/lib/useT";
 
 type IssueRow = HandoffIssue & {
   reporter_id: string;
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/moderator")({
 
 function ModeratorDashboard() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { loading, isModerator, profile } = useModeratorStatus();
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -101,7 +103,7 @@ function ModeratorDashboard() {
     toast.success("Handoff recorded — PDF downloaded, email drafted.");
   }
 
-  if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading…</div>;
+  if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">{t("loading")}</div>;
   if (!isModerator) return null;
 
   return (
@@ -110,7 +112,7 @@ function ModeratorDashboard() {
         <Link to="/map" className="rounded-full p-2 hover:bg-secondary"><ArrowLeft size={18} /></Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-lg font-bold truncate">Moderator</h1>
+            <h1 className="font-display text-lg font-bold truncate">{t("moderator")}</h1>
             {profile?.verified && <VerifiedBadge />}
           </div>
           {profile && (
@@ -120,20 +122,20 @@ function ModeratorDashboard() {
           )}
         </div>
         <Link to="/moderator/apply" className="text-xs rounded-full border border-border px-3 py-1.5 hover:bg-secondary">
-          Edit profile
+          {t("editProfile")}
         </Link>
       </header>
 
       <div className="max-w-3xl mx-auto px-4 py-4">
         <div className="grid grid-cols-3 gap-1.5 mb-4">
           {([
-            ["top", "Most upvoted"],
-            ["open", "Needs attention"],
-            ["handedoff", "Handed off"],
+            ["top", t("mostUpvoted")],
+            ["open", t("needsAttention")],
+            ["handedoff", t("handedOff")],
           ] as const).map(([k, label]) => (
             <button
               key={k}
-              onClick={() => setTab(k)}
+              onClick={() => setTab(k as typeof tab)}
               className={`rounded-full py-2 text-xs font-medium border ${
                 tab === k ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:bg-secondary"
               }`}
@@ -144,7 +146,7 @@ function ModeratorDashboard() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground py-10">Nothing here yet.</p>
+          <p className="text-center text-sm text-muted-foreground py-10">{t("nothingHere")}</p>
         ) : (
           <ul className="space-y-3">
             {filtered.map((issue) => (
@@ -174,6 +176,7 @@ function ModIssueRow({
   onStatus: (s: "open" | "acknowledged" | "fixed") => void;
   onHandoff: () => void;
 }) {
+  const { t } = useT();
   const cat = CATEGORY_MAP[issue.category as IssueCategory];
   return (
     <li className="rounded-2xl border border-border bg-card p-4">
@@ -188,7 +191,7 @@ function ModIssueRow({
           </div>
           {issue.handed_off_at && (
             <p className="mt-1.5 text-[11px] italic text-primary/90 bg-primary/5 border-l-2 border-primary pl-2 py-1">
-              Handed off {format(new Date(issue.handed_off_at), "MMM d")} — {issue.handoff_note ?? HANDOFF_NOTE}
+              {t("handedOff")} {format(new Date(issue.handed_off_at), "MMM d")} — {issue.handoff_note ?? HANDOFF_NOTE}
             </p>
           )}
         </div>
@@ -202,21 +205,21 @@ function ModIssueRow({
           disabled={busy || issue.status === "acknowledged"}
           className="text-xs rounded-full border border-warning/40 bg-warning/10 text-warning px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 hover:bg-warning/20"
         >
-          <Search size={12} /> Mark reviewing
+          <Search size={12} /> {t("markReviewing")}
         </button>
         <button
           onClick={() => onStatus("fixed")}
           disabled={busy || issue.status === "fixed"}
           className="text-xs rounded-full border border-success/40 bg-success/10 text-success px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 hover:bg-success/20"
         >
-          <CheckCircle2 size={12} /> Mark fixed
+          <CheckCircle2 size={12} /> {t("markFixed")}
         </button>
         <button
           onClick={() => onStatus("open")}
           disabled={busy || issue.status === "open"}
           className="text-xs rounded-full border border-border bg-background px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 hover:bg-secondary"
         >
-          <AlertCircle size={12} /> Reopen
+          <AlertCircle size={12} /> {t("reopen")}
         </button>
         {!issue.handed_off_at && (
           <button
@@ -224,7 +227,7 @@ function ModIssueRow({
             disabled={busy}
             className="ml-auto text-xs rounded-full bg-primary text-primary-foreground px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50 hover:opacity-90"
           >
-            <Send size={12} /> Hand off to city
+            <Send size={12} /> {t("handOffToCity")}
             <FileDown size={12} />
           </button>
         )}
