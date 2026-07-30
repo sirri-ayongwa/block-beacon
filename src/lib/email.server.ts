@@ -1,4 +1,8 @@
-const adminEmail = process.env.ADMIN_EMAIL || "ayongwasirri@gmail.com";
+function getServerEnv(name: string) {
+  return typeof process !== "undefined" ? process.env?.[name] : undefined;
+}
+
+const adminEmail = getServerEnv("ADMIN_EMAIL") || "ayongwasirri@gmail.com";
 
 export function escapeHtml(value: string | null | undefined) {
   return String(value || "").replace(/[&<>"']/g, (char) => ({
@@ -17,7 +21,7 @@ export async function sendResendEmail(input: {
   text: string;
   html: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = getServerEnv("RESEND_API_KEY");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -49,7 +53,7 @@ export async function sendMailchimpTransactional(input: {
   subject: string;
   html: string;
 }) {
-  const apiKey = process.env.MAILCHIMP_API_KEY;
+  const apiKey = getServerEnv("MAILCHIMP_API_KEY");
   if (!apiKey) throw new Error("MAILCHIMP_API_KEY is not configured");
 
   const response = await fetch("https://mandrillapp.com/api/1.0/messages/send.json", {

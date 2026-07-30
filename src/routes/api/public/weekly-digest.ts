@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { escapeHtml, sendMailchimpTransactional } from "@/lib/email.server";
 
+function getServerEnv(name: string) {
+  return typeof process !== "undefined" ? process.env?.[name] : undefined;
+}
+
 export const Route = createFileRoute("/api/public/weekly-digest")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const provided = request.headers.get("apikey") ?? request.headers.get("Authorization")?.replace(/^Bearer\s+/, "");
-        const digestKey = process.env.WEEKLY_DIGEST_API_KEY;
+        const digestKey = getServerEnv("WEEKLY_DIGEST_API_KEY");
         if (digestKey && provided !== digestKey) {
           return new Response("Unauthorized", { status: 401 });
         }

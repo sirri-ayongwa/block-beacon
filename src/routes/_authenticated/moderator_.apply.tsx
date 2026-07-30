@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, BadgeCheck, Building2, ShieldCheck, MailCheck, Upload, Camera, FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { compressImage } from "@/lib/compressImage";
 import { useT } from "@/lib/useT";
+import { verifyUserSubmission } from "@/lib/moderator-verify.functions";
 
 export const Route = createFileRoute("/_authenticated/moderator_/apply")({
   component: ModeratorApply,
@@ -118,6 +119,18 @@ function ModeratorApply() {
     }
     setState({ phase: "checking" });
     try {
+      const moderation = await verifyUserSubmission([
+        `Moderator organization: ${organization.trim()}`,
+        `Community served: ${community.trim()}`,
+        `Government email: ${email}`,
+        `Proof type: ${proofKind}`,
+        file ? "Proof file selected by user." : "No proof file selected.",
+      ].join("\n"));
+      const approved = moderation.isApproved && moderation.confidenceScore >= 0.65;
+      const reviewReason = approved
+        ? moderation.reason
+        : `Pending manual review. ${moderation.reason}`;
+
       const { error: mErr } = await (supabase.from("moderator_profiles" as any) as any).upsert({
         id: userId,
         organization: organization.trim(),
@@ -125,17 +138,16 @@ function ModeratorApply() {
         community: community.trim(),
         proof_photo_path: null,
         proof_kind: proofKind,
-        ai_verified: false,
-        ai_reason: file
-          ? "Pending manual review. File upload is disabled on Firebase Spark because Cloud Storage requires Blaze."
-          : "Pending manual review. No proof file attached because Cloud Storage requires Blaze.",
+        ai_verified: approved,
+        ai_reason: reviewReason,
+        ai_reviewed_at: new Date().toISOString(),
       });
       if (mErr) throw mErr;
 
-      setState({
-        phase: "submitted",
-        reason: "Application saved for manual review. On Spark, moderator approval must be granted by an admin updating Firestore/user_roles.",
-      });
+      setState(approved ? { phase: "approved", reason: reviewReason } : { phase: "submitted", reason: reviewReason });
+      if (approved) {
+        setTimeout(() => navigate({ to: "/moderator" }), 1200);
+      }
     } catch (err) {
       setState({ phase: "rejected", reason: err instanceof Error ? err.message : "Verification failed" });
     }
