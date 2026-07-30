@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, BadgeCheck, Building2, ShieldCheck, MailCheck, Upload, Camera, FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { compressImage } from "@/lib/compressImage";
-import { verifyModeratorProof } from "@/lib/moderator-verify.functions";
 import { useT } from "@/lib/useT";
 
 export const Route = createFileRoute("/_authenticated/moderator_/apply")({
@@ -21,6 +20,7 @@ type ProofKind = "letter" | "badge";
 type VerifyState =
   | { phase: "idle" }
   | { phase: "checking" }
+  | { phase: "submitted"; reason: string }
   | { phase: "approved"; reason: string }
   | { phase: "rejected"; reason: string };
 
@@ -116,48 +116,26 @@ function ModeratorApply() {
       toast.error("Fill in your department and community first.");
       return;
     }
-    if (!file) {
-      toast.error("Upload your authorization letter or ID badge.");
-      return;
-    }
     setState({ phase: "checking" });
     try {
-      // Determine file extension based on file type
-      const fileType = file.type;
-      let extension = '.webp';
-      if (fileType === 'application/pdf') extension = '.pdf';
-      else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') extension = '.docx';
-      
-      const path = `${userId}/${crypto.randomUUID()}${extension}`;
-      const { error: upErr } = await supabase.storage.from("moderator-proofs").upload(path, file, { 
-        contentType: fileType
-      });
-      if (upErr) throw upErr;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: mErr } = await (supabase.from("moderator_profiles" as any) as any).upsert({
         id: userId,
         organization: organization.trim(),
         gov_email: email,
         community: community.trim(),
-        proof_photo_path: path,
+        proof_photo_path: null,
         proof_kind: proofKind,
         ai_verified: false,
-        ai_reason: null,
+        ai_reason: file
+          ? "Pending manual review. File upload is disabled on Firebase Spark because Cloud Storage requires Blaze."
+          : "Pending manual review. No proof file attached because Cloud Storage requires Blaze.",
       });
       if (mErr) throw mErr;
 
-      const result = await verifyModeratorProof({ data: { path, kind: proofKind } });
-
-      if (result.approved) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from("user_roles" as any) as any).insert({ user_id: userId, role: "moderator" });
-        setState({ phase: "approved", reason: result.reason });
-        try { window.localStorage.removeItem("bb.signup_role"); } catch { /* noop */ }
-        setTimeout(() => navigate({ to: "/moderator" }), 1400);
-      } else {
-        setState({ phase: "rejected", reason: result.reason });
-      }
+      setState({
+        phase: "submitted",
+        reason: "Application saved for manual review. On Spark, moderator approval must be granted by an admin updating Firestore/user_roles.",
+      });
     } catch (err) {
       setState({ phase: "rejected", reason: err instanceof Error ? err.message : "Verification failed" });
     }
@@ -259,10 +237,10 @@ function ModeratorApply() {
             </div>
           </div>
 
-          <button type="submit" disabled={state.phase === "checking" || !file}
+          <button type="submit" disabled={state.phase === "checking"}
             data-testid="submit-verification-btn"
             className="w-full rounded-full bg-primary py-3 font-medium text-primary-foreground disabled:opacity-50 hover:opacity-90">
-            {state.phase === "checking" ? t("verifying") : t("submitForReview")}
+            {state.phase === "checking" ? "Saving..." : t("submitForReview")}
           </button>
         </form>
       </main>
@@ -283,6 +261,17 @@ function ModeratorApply() {
                 <h3 className="mt-4 font-display text-xl font-bold">{t("youreVerified")}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{state.reason}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{t("takingYouTo")}</p>
+              </>
+            )}
+            {state.phase === "submitted" && (
+              <>
+                <CheckCircle2 size={40} className="mx-auto text-success" />
+                <h3 className="mt-4 font-display text-xl font-bold">Application saved</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{state.reason}</p>
+                <button onClick={() => navigate({ to: "/map" })}
+                  className="mt-4 rounded-full border border-border px-4 py-2 text-sm hover:bg-secondary">
+                  Back to map
+                </button>
               </>
             )}
             {state.phase === "rejected" && (

@@ -7,8 +7,8 @@ import { ArrowLeft, Locate, Save, Bell, Trash2, Loader2, MapPinned } from "lucid
 import { requestBrowserNotifPermission } from "@/lib/notify";
 import { AddressPicker, type ResolvedAddress } from "@/components/AddressPicker";
 import { getNotifPrefs, setNotifPrefs, type NotifPrefs } from "@/lib/notifPrefs";
-import { useServerFn } from "@tanstack/react-start";
-import { deleteMyAccount } from "@/lib/account.functions";
+import { deleteUser } from "firebase/auth";
+import { auth } from "@/integrations/firebase/client";
 import { useT } from "@/lib/useT";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -32,13 +32,13 @@ function SettingsPage() {
   const [homeLng, setHomeLng] = useState<string>("");
   const [homeZoom, setHomeZoom] = useState<number>(13);
   const [defaultAnon, setDefaultAnon] = useState(false);
+  const [weeklyDigest, setWeeklyDigest] = useState(false);
   const [notifOn, setNotifOn] = useState(false);
   const [addressLabel, setAddressLabel] = useState<string>("");
   const [showPicker, setShowPicker] = useState(false);
   const [prefs, setPrefs] = useState<NotifPrefs>(() => getNotifPrefs());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const deleteAccountFn = useServerFn(deleteMyAccount);
 
   useEffect(() => {
     (async () => {
@@ -46,7 +46,7 @@ function SettingsPage() {
       if (!userData.user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, country, home_lat, home_lng, home_zoom, default_anonymous")
+        .select("display_name, country, home_lat, home_lng, home_zoom, default_anonymous, digest_subscribed")
         .eq("id", userData.user.id)
         .maybeSingle();
       if (data) {
@@ -56,6 +56,7 @@ function SettingsPage() {
         setHomeLng(data.home_lng != null ? String(data.home_lng) : "");
         setHomeZoom(data.home_zoom ?? 13);
         setDefaultAnon(!!data.default_anonymous);
+        setWeeklyDigest(!!data.digest_subscribed);
       }
       if (typeof Notification !== "undefined") {
         setNotifOn(Notification.permission === "granted");
@@ -82,7 +83,16 @@ function SettingsPage() {
   async function handleDeleteAccount() {
     setDeleting(true);
     try {
-      await deleteAccountFn({});
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!auth.currentUser || !userId) throw new Error("Sign in again to delete your account.");
+      await Promise.allSettled([
+        supabase.from("issue_votes").delete().eq("user_id", userId),
+        supabase.from("issues").delete().eq("reporter_id", userId),
+        supabase.from("profiles").delete().eq("id", userId),
+        supabase.from("moderator_profiles" as any).delete().eq("id", userId),
+      ]);
+      await deleteUser(auth.currentUser);
       await supabase.auth.signOut();
       toast.success("Your account was permanently deleted.");
       navigate({ to: "/" });
@@ -127,6 +137,8 @@ function SettingsPage() {
         home_lng: homeLng ? Number(homeLng) : null,
         home_zoom: Number(homeZoom) || 13,
         default_anonymous: defaultAnon,
+        digest_subscribed: weeklyDigest,
+        digest_weekday: weeklyDigest ? new Date().getUTCDay() : null,
       };
       const { error } = await supabase.from("profiles").upsert(patch);
       if (error) throw error;
@@ -191,6 +203,24 @@ function SettingsPage() {
             placeholder="Neighbor from 5th Ave"
             className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
           />
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
+          <h2 className="font-semibold">Weekly digest</h2>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={weeklyDigest}
+              onChange={(e) => setWeeklyDigest(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-input"
+            />
+            <div>
+              <div className="text-sm font-medium">Send me a weekly issue digest</div>
+              <div className="text-xs text-muted-foreground">
+                Sent at 9:00 AM GMT+1 on the weekday you turn this on.
+              </div>
+            </div>
+          </label>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-5 space-y-3">

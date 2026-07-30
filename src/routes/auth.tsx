@@ -1,7 +1,12 @@
 import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { auth, googleProvider } from "@/integrations/firebase/client";
 import { toast } from "sonner";
 import { MapPin, ShieldCheck, Users, Eye, EyeOff } from "lucide-react";
 import { useT } from "@/lib/useT";
@@ -13,7 +18,7 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign in — BlockBeacon" },
+      { title: "Sign in - BlockBeacon" },
       { name: "description", content: "Sign in or create a free BlockBeacon account to start reporting neighborhood issues." },
     ],
   }),
@@ -23,7 +28,6 @@ function AuthPage() {
   const navigate = useNavigate();
   const { t } = useT();
   const { role: roleParam } = useSearch({ from: "/auth" }) as { role: "moderator" | "neighbor" };
-  // Prefer URL param, then persisted intent, then default neighbor.
   const [role] = useState<"moderator" | "neighbor">(() => {
     if (roleParam === "moderator") return "moderator";
     if (typeof window !== "undefined") {
@@ -33,7 +37,6 @@ function AuthPage() {
     return "neighbor";
   });
 
-  // Persist for the _authenticated resume-onboarding logic.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (role === "moderator") window.localStorage.setItem("bb.signup_role", "moderator");
@@ -46,10 +49,15 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      await routeAfterAuth(data.user.id, role, navigate);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) return;
+      if (!user.emailVerified) {
+        navigate({ to: "/verify-email" });
+        return;
+      }
+      routeAfterAuth(role, navigate);
     });
+    return unsubscribe;
   }, [navigate, role]);
 
   async function handleEmail(e: React.FormEvent) {
@@ -61,36 +69,26 @@ function AuthPage() {
           const domain = email.split("@")[1]?.toLowerCase() ?? "";
           const blocked = ["gmail.com", "yahoo.com", "yahoo.co.uk", "outlook.com", "hotmail.com", "live.com", "icloud.com", "aol.com", "proton.me", "protonmail.com"];
           if (!domain || blocked.includes(domain)) {
-            toast.error("Moderators must sign up with an official work / city-hall email — free providers (Gmail, Yahoo, Outlook, etc.) aren't accepted.");
+            toast.error("Moderators must sign up with an official work / city-hall email. Free providers are not accepted.");
             setBusy(false);
             return;
           }
         }
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/verify-email`,
-          },
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(credential.user, {
+          url: `${window.location.origin}/verify-email`,
         });
-        if (error) throw error;
-        toast.success("Account created — check your inbox for the verification link.");
+        toast.success("Account created. Check your inbox for the verification link.");
         navigate({ to: "/verify-email" });
         return;
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user && !userData.user.email_confirmed_at) {
-          navigate({ to: "/verify-email" });
-          return;
-        }
-        if (userData.user) {
-          await routeAfterAuth(userData.user.id, role, navigate);
-          return;
-        }
       }
-      navigate({ to: role === "moderator" ? "/moderator/apply" : "/map" });
+
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      if (!credential.user.emailVerified) {
+        navigate({ to: "/verify-email" });
+        return;
+      }
+      routeAfterAuth(role, navigate);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -98,49 +96,20 @@ function AuthPage() {
     }
   }
 
-  // Route the user based on their moderator status:
-  // - Verified moderators (has role in user_roles) -> /map
-  // - Moderators with in-progress profile -> /moderator/apply (resume)
-  // - New moderator signups -> /moderator/apply
-  // - Neighbors -> /map
-  async function routeAfterAuth(userId: string, roleChoice: "moderator" | "neighbor", nav: typeof navigate) {
-    if (roleChoice !== "moderator") {
-      nav({ to: "/map" });
-      return;
-    }
-    // Check if user has verified moderator role
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: roles } = await (supabase.from("user_roles" as any) as any)
-      .select("role").eq("user_id", userId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const isVerified = (roles as any[] | null)?.some((r) => r.role === "moderator");
-    if (isVerified) {
-      // Verified moderators go straight to the map
-      try { window.localStorage.removeItem("bb.signup_role"); } catch { /* noop */ }
-      nav({ to: "/map" });
-      return;
-    }
-    // Not verified yet - go to apply (resume onboarding)
-    nav({ to: "/moderator/apply" });
+  function routeAfterAuth(roleChoice: "moderator" | "neighbor", nav: typeof navigate) {
+    nav({ to: roleChoice === "moderator" ? "/moderator/apply" : "/map" });
   }
 
   async function handleGoogle() {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      toast.error("Google sign-in failed");
+    try {
+      await signInWithPopup(auth, googleProvider);
+      routeAfterAuth(role, navigate);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
       setBusy(false);
-      return;
     }
-    if (result.redirected) return;
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData.user) {
-      await routeAfterAuth(userData.user.id, role, navigate);
-      return;
-    }
-    navigate({ to: role === "moderator" ? "/moderator/apply" : "/map" });
   }
 
   return (
@@ -225,7 +194,7 @@ function AuthPage() {
               data-testid="auth-submit-btn"
               className="w-full rounded-full bg-primary py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50 hover:opacity-90"
             >
-              {busy ? "…" : mode === "signin" ? t("signIn") : t("createAccount")}
+              {busy ? "..." : mode === "signin" ? t("signIn") : t("createAccount")}
             </button>
           </form>
 
