@@ -189,22 +189,6 @@ function AuthPage() {
               </button>
             </div>
 
-            <p className="mt-2 text-right">
-              <button
-                type="button"
-                onClick={() => {
-                  // remember which role the user was on and send them to the reset flow
-                  if (typeof window !== "undefined") window.localStorage.setItem("bb.reset_role", role);
-                  // navigate to the reset page
-                  // using window.location ensures the route receives any query params reliably.
-                  window.location.href = `/reset-password?role=${role}`;
-                }}
-                className="text-sm text-primary hover:underline"
-              >
-                Forgot password?
-              </button>
-            </p>
-
             <button
               type="submit"
               disabled={busy}
