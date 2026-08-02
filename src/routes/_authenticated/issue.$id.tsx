@@ -63,62 +63,84 @@ function IssueDetail() {
   }, []);
 
   async function loadAll() {
-    const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
-      supabase.from("issues").select("*").eq("id", id).maybeSingle(),
-      supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
-      supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
-    ]);
-    if (!issueData) {
-      setLoading(false);
-      return;
-    }
-    setIssue(issueData as IssueRow);
-    const evts = (eventData ?? []) as StatusEvent[];
-    const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
-    if (authorIds.length) {
-      const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
-      const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
-      evts.forEach((e) => { e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null; });
-    }
-    setEvents(evts);
+    setLoading(true);
+    try {
+      const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
+        supabase.from("issues").select("*").eq("id", id).maybeSingle(),
+        supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
+        supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
+      ]);
 
-    // Reporter display name (respect anonymity)
-    if (!issueData.is_anonymous) {
-      const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", issueData.reporter_id).maybeSingle();
-      setReporterName(prof?.display_name ?? "A neighbor");
-    } else {
-      setReporterName(null);
-    }
+      if (!issueData) {
+        setIssue(null);
+        return;
+      }
 
-    // Sign photo URLs
-    const withUrls = await Promise.all(
-      (photoData ?? []).map(async (p) => {
-        const { data } = await supabase.storage.from("issue-photos").createSignedUrl(p.path, 3600);
-        return { ...p, url: data?.signedUrl } as Photo;
-      })
-    );
-    setPhotos(withUrls);
+      setIssue(issueData as IssueRow);
 
-    // Voters + display names
-    const { data: votes } = await supabase.from("issue_votes").select("user_id, created_at").eq("issue_id", id).order("created_at", { ascending: false });
-    const voterIds = (votes ?? []).map((v) => v.user_id);
-    if (voterIds.length > 0) {
-      const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", voterIds);
-      const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
-      setVoters(
-        (votes ?? []).map((v) => ({
-          user_id: v.user_id,
-          created_at: v.created_at,
-          display_name: nameMap.get(v.user_id) ?? null,
-          // We don't expose per-vote anonymity yet — but we hide names for voters
-          // whose profile has no display_name so they appear as "A neighbor".
-          is_anonymous: !nameMap.get(v.user_id),
-        }))
+      const evts = (eventData ?? []) as StatusEvent[];
+      const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
+      if (authorIds.length) {
+        const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
+        const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
+        evts.forEach((e) => {
+          e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null;
+        });
+      }
+      setEvents(evts);
+
+      // Reporter display name (respect anonymity)
+      if (!issueData.is_anonymous) {
+        const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", issueData.reporter_id).maybeSingle();
+        setReporterName(prof?.display_name ?? "A neighbor");
+      } else {
+        setReporterName(null);
+      }
+
+      // Sign photo URLs
+      const withUrls = await Promise.all(
+        (photoData ?? []).map(async (p) => {
+          try {
+            const { data } = await supabase.storage.from("issue-photos").createSignedUrl(p.path, 3600);
+            return { ...p, url: data?.signedUrl } as Photo;
+          } catch (err) {
+            // If signing fails for a single photo, log and continue without blocking the whole page
+            // eslint-disable-next-line no-console
+            console.error("Failed to create signed URL for photo", p, err);
+            return { ...p, url: undefined } as Photo;
+          }
+        })
       );
-    } else {
-      setVoters([]);
+      setPhotos(withUrls);
+
+      // Voters + display names
+      const { data: votes } = await supabase.from("issue_votes").select("user_id, created_at").eq("issue_id", id).order("created_at", { ascending: false });
+      const voterIds = (votes ?? []).map((v) => v.user_id);
+      if (voterIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", voterIds);
+        const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+        setVoters(
+          (votes ?? []).map((v) => ({
+            user_id: v.user_id,
+            created_at: v.created_at,
+            display_name: nameMap.get(v.user_id) ?? null,
+            // We don't expose per-vote anonymity yet — but we hide names for voters
+            // whose profile has no display_name so they appear as "A neighbor".
+            is_anonymous: !nameMap.get(v.user_id),
+          }))
+        );
+      } else {
+        setVoters([]);
+      }
+    } catch (err) {
+      // Log and surface a friendly UI toast so the user doesn't just see "Loading…" forever
+      // eslint-disable-next-line no-console
+      console.error("Failed to load issue details:", err);
+      toast.error("Couldn't load this report right now. Try again soon.");
+      setIssue(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
