@@ -437,6 +437,24 @@ function SettingsPage() {
           {saving ? t("saving") : t("saveSettings")}
         </button>
 
+        {canTestDigest && (
+          <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <h2 className="font-semibold">Weekly digest test</h2>
+            <p className="text-xs text-muted-foreground">
+              Sends a sample weekly digest email to {myEmail} right now so you can check how it looks.
+            </p>
+            <button
+              onClick={sendTestDigest}
+              disabled={testingDigest}
+              data-testid="send-test-digest-btn"
+              className="w-full rounded-full border border-primary text-primary py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/10"
+            >
+              {testingDigest ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+              {testingDigest ? "Sending…" : "Send test digest email"}
+            </button>
+          </section>
+        )}
+
         <section className="rounded-2xl border border-destructive/40 bg-destructive/5 p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Trash2 size={16} className="text-destructive" />
