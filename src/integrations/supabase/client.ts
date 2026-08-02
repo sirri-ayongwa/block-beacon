@@ -85,6 +85,7 @@ function defaultsFor(table: string, row: DocumentData, id: string) {
 
 class FirebaseQueryBuilder {
   private filters: QueryConstraint[] = [];
+  private sorts: Array<{ field: string; ascending: boolean }> = [];
   private limitCount?: number;
   private singleMode: "single" | "maybeSingle" | null = null;
   private pendingMutation:
@@ -135,7 +136,8 @@ class FirebaseQueryBuilder {
   }
 
   order(field: string, options?: { ascending?: boolean }) {
-    this.filters.push(orderBy(field, options?.ascending === false ? "desc" : "asc"));
+    // Sorting is applied client-side so we never require a Firestore composite index.
+    this.sorts.push({ field, ascending: options?.ascending !== false });
     return this;
   }
 
@@ -176,7 +178,11 @@ class FirebaseQueryBuilder {
 
   private addWhere(field: string, op: WhereFilterOp, value: unknown) {
     if (field === "id") {
-      this.filters.push(where("__name__", op, value));
+      // __name__ comparisons need document references, not raw id strings.
+      const asRef = (v: unknown) => doc(db, this.table, String(v));
+      this.filters.push(
+        where("__name__", op, Array.isArray(value) ? value.map(asRef) : asRef(value)),
+      );
       return;
     }
     this.filters.push(where(field, op, value));
@@ -200,7 +206,24 @@ class FirebaseQueryBuilder {
   }
 
   private get constraints() {
-    return this.limitCount ? [...this.filters, limitQuery(this.limitCount)] : this.filters;
+    // limit is applied after client-side sorting (see executeRead)
+    return this.filters;
+  }
+
+  private sortRows<T extends DocumentData>(rows: T[]): T[] {
+    if (this.sorts.length === 0) return rows;
+    return [...rows].sort((a, b) => {
+      for (const { field, ascending } of this.sorts) {
+        const av = a[field];
+        const bv = b[field];
+        if (av === bv) continue;
+        if (av === null || av === undefined) return ascending ? -1 : 1;
+        if (bv === null || bv === undefined) return ascending ? 1 : -1;
+        const cmp = av > bv ? 1 : -1;
+        return ascending ? cmp : -cmp;
+      }
+      return 0;
+    });
   }
 
   private async execute(): Promise<{ data: unknown; error: null }> {
@@ -247,7 +270,8 @@ class FirebaseQueryBuilder {
 
   private async executeRead(): Promise<{ data: unknown; error: null }> {
     const snapshot = await getDocs(query(this.collectionRef, ...this.constraints));
-    const rows = snapshot.docs.map(withId);
+    let rows = this.sortRows(snapshot.docs.map(withId));
+    if (this.limitCount !== undefined) rows = rows.slice(0, this.limitCount);
     if (this.singleMode === "single") return { data: rows[0] ?? null, error: null };
     if (this.singleMode === "maybeSingle") return { data: rows[0] ?? null, error: null };
     return { data: rows, error: null };
