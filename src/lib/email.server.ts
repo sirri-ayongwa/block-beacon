@@ -20,6 +20,13 @@ export async function sendResendEmail(input: {
   subject: string;
   text: string;
   html: string;
+}): Promise<unknown>;
+export async function sendResendEmail(input: {
+  to?: string[];
+  replyTo?: string;
+  subject: string;
+  text: string;
+  html: string;
 }) {
   const apiKey = getServerEnv("RESEND_API_KEY");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
