@@ -24,6 +24,7 @@ import { Route as AuthenticatedModeratorRouteImport } from './routes/_authentica
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as ApiPublicWeeklyDigestRouteImport } from './routes/api/public/weekly-digest'
+import { Route as ApiPublicDigestTestRouteImport } from './routes/api/public/digest-test'
 import { Route as ApiPublicContactEmailRouteImport } from './routes/api/public/contact-email'
 import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator_.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
@@ -103,6 +104,11 @@ const ApiPublicWeeklyDigestRoute = ApiPublicWeeklyDigestRouteImport.update({
   path: '/api/public/weekly-digest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDigestTestRoute = ApiPublicDigestTestRouteImport.update({
+  id: '/api/public/digest-test',
+  path: '/api/public/digest-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContactEmailRoute = ApiPublicContactEmailRouteImport.update({
   id: '/api/public/contact-email',
   path: '/api/public/contact-email',
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesByTo {
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesById {
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
   '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRouteTypes {
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
+    | '/api/public/digest-test'
     | '/api/public/weekly-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
+    | '/api/public/digest-test'
     | '/api/public/weekly-digest'
   id:
     | '__root__'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/_authenticated/issue/$id'
     | '/_authenticated/moderator_/apply'
     | '/api/public/contact-email'
+    | '/api/public/digest-test'
     | '/api/public/weekly-digest'
   fileRoutesById: FileRoutesById
 }
@@ -251,6 +263,7 @@ export interface RootRouteChildren {
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
   ApiPublicContactEmailRoute: typeof ApiPublicContactEmailRoute
+  ApiPublicDigestTestRoute: typeof ApiPublicDigestTestRoute
   ApiPublicWeeklyDigestRoute: typeof ApiPublicWeeklyDigestRoute
 }
 
@@ -361,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWeeklyDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/digest-test': {
+      id: '/api/public/digest-test'
+      path: '/api/public/digest-test'
+      fullPath: '/api/public/digest-test'
+      preLoaderRoute: typeof ApiPublicDigestTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/contact-email': {
       id: '/api/public/contact-email'
       path: '/api/public/contact-email'
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
   ApiPublicContactEmailRoute: ApiPublicContactEmailRoute,
+  ApiPublicDigestTestRoute: ApiPublicDigestTestRoute,
   ApiPublicWeeklyDigestRoute: ApiPublicWeeklyDigestRoute,
 }
 export const routeTree = rootRouteImport
