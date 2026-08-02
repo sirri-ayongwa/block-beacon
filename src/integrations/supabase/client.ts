@@ -25,6 +25,9 @@ import {
 
 type AuthEvent = "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type QueryResult = { data: any; error: any };
+
 function toSupabaseUser(user: User | null) {
   if (!user) return null;
   return {
@@ -95,7 +98,8 @@ class FirebaseQueryBuilder {
 
   constructor(private table: string) {}
 
-  select() {
+  select(..._columns: string[]) {
+    void _columns;
     return this;
   }
 
@@ -186,8 +190,8 @@ class FirebaseQueryBuilder {
     this.filters.push(where(field, op, value));
   }
 
-  async then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  async then<TResult1 = QueryResult, TResult2 = never>(
+    onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     try {
@@ -195,7 +199,7 @@ class FirebaseQueryBuilder {
       return onfulfilled ? onfulfilled(result) : (result as TResult1);
     } catch (error) {
       if (onrejected) return onrejected(error);
-      return { data: null, error };
+      return { data: null, error } as TResult1;
     }
   }
 
@@ -224,7 +228,7 @@ class FirebaseQueryBuilder {
     });
   }
 
-  private async execute(): Promise<{ data: unknown; error: null }> {
+  private async execute(): Promise<QueryResult> {
     if (!this.pendingMutation) return this.executeRead();
 
     if (this.pendingMutation.type === "insert") {
@@ -255,8 +259,9 @@ class FirebaseQueryBuilder {
     const docs = await getDocs(query(this.collectionRef, ...this.constraints));
 
     if (this.pendingMutation.type === "update") {
+      const values = this.pendingMutation.values;
       await Promise.all(docs.docs.map((snapshot) => updateDoc(doc(db, this.table, snapshot.id), {
-        ...this.pendingMutation?.values,
+        ...values,
         updated_at: new Date().toISOString(),
       })));
       return { data: docs.docs.map(withId), error: null };
@@ -266,7 +271,7 @@ class FirebaseQueryBuilder {
     return { data: null, error: null };
   }
 
-  private async executeRead(): Promise<{ data: unknown; error: null }> {
+  private async executeRead(): Promise<QueryResult> {
     const snapshot = await getDocs(query(this.collectionRef, ...this.constraints));
     let rows = this.sortRows(snapshot.docs.map(withId));
     if (this.limitCount !== undefined) rows = rows.slice(0, this.limitCount);
