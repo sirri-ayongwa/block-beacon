@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { buildDigestHtml, sendTransactionalEmail, type DigestIssue } from "@/lib/email.server";
 
 // Only this account may fire a test digest.
-const ALLOWED_TESTER = "ayongwasirri@gmail.com";
+const ALLOWED_TESTER = "ayongwaayongwasirri@gmail.com";
 
 export const Route = createFileRoute("/api/public/digest-test")({
   server: {
