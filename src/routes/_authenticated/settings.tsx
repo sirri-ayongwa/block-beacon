@@ -39,11 +39,44 @@ function SettingsPage() {
   const [prefs, setPrefs] = useState<NotifPrefs>(() => getNotifPrefs());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [myEmail, setMyEmail] = useState<string>("");
+  const [testingDigest, setTestingDigest] = useState(false);
+
+  const canTestDigest = myEmail.trim().toLowerCase() === "ayongwaayongwasirri@gmail.com";
+
+  async function sendTestDigest() {
+    setTestingDigest(true);
+    try {
+      const { data: recent } = await supabase
+        .from("issues")
+        .select("title, category, status, upvote_count")
+        .order("upvote_count", { ascending: false })
+        .limit(5);
+
+      const response = await fetch("/api/public/digest-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: myEmail.trim().toLowerCase(),
+          name: displayName || "neighbor",
+          issues: recent ?? [],
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || `Failed (${response.status})`);
+      toast.success("Test digest sent — check your inbox (and spam).");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send the test digest");
+    } finally {
+      setTestingDigest(false);
+    }
+  }
 
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
+      setMyEmail(userData.user.email ?? "");
       const { data } = await supabase
         .from("profiles")
         .select("display_name, country, home_lat, home_lng, home_zoom, default_anonymous, digest_subscribed")
@@ -403,6 +436,24 @@ function SettingsPage() {
           <Save size={16} />
           {saving ? t("saving") : t("saveSettings")}
         </button>
+
+        {canTestDigest && (
+          <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <h2 className="font-semibold">Weekly digest test</h2>
+            <p className="text-xs text-muted-foreground">
+              Sends a sample weekly digest email to {myEmail} right now so you can check how it looks.
+            </p>
+            <button
+              onClick={sendTestDigest}
+              disabled={testingDigest}
+              data-testid="send-test-digest-btn"
+              className="w-full rounded-full border border-primary text-primary py-2.5 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/10"
+            >
+              {testingDigest ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+              {testingDigest ? "Sending…" : "Send test digest email"}
+            </button>
+          </section>
+        )}
 
         <section className="rounded-2xl border border-destructive/40 bg-destructive/5 p-5 space-y-3">
           <div className="flex items-center gap-2">

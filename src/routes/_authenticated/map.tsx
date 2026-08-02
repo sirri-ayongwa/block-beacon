@@ -173,7 +173,7 @@ function MapPage() {
       .select("issue_id")
       .eq("user_id", userId)
       .then(({ data }) => {
-        setMyVotes(new Set((data ?? []).map((r) => r.issue_id)));
+        setMyVotes(new Set((data ?? []).map((r: any) => r.issue_id)));
       });
   }, [userId]);
 

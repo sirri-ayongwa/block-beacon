@@ -7,9 +7,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  limit as limitQuery,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -26,6 +24,9 @@ import {
 } from "firebase/storage";
 
 type AuthEvent = "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type QueryResult = { data: any; error: any };
 
 function toSupabaseUser(user: User | null) {
   if (!user) return null;
@@ -85,6 +86,7 @@ function defaultsFor(table: string, row: DocumentData, id: string) {
 
 class FirebaseQueryBuilder {
   private filters: QueryConstraint[] = [];
+  private sorts: Array<{ field: string; ascending: boolean }> = [];
   private limitCount?: number;
   private singleMode: "single" | "maybeSingle" | null = null;
   private pendingMutation:
@@ -96,7 +98,8 @@ class FirebaseQueryBuilder {
 
   constructor(private table: string) {}
 
-  select() {
+  select(..._columns: string[]) {
+    void _columns;
     return this;
   }
 
@@ -135,7 +138,8 @@ class FirebaseQueryBuilder {
   }
 
   order(field: string, options?: { ascending?: boolean }) {
-    this.filters.push(orderBy(field, options?.ascending === false ? "desc" : "asc"));
+    // Sorting is applied client-side so we never require a Firestore composite index.
+    this.sorts.push({ field, ascending: options?.ascending !== false });
     return this;
   }
 
@@ -176,14 +180,18 @@ class FirebaseQueryBuilder {
 
   private addWhere(field: string, op: WhereFilterOp, value: unknown) {
     if (field === "id") {
-      this.filters.push(where("__name__", op, value));
+      // __name__ comparisons need document references, not raw id strings.
+      const asRef = (v: unknown) => doc(db, this.table, String(v));
+      this.filters.push(
+        where("__name__", op, Array.isArray(value) ? value.map(asRef) : asRef(value)),
+      );
       return;
     }
     this.filters.push(where(field, op, value));
   }
 
-  async then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  async then<TResult1 = QueryResult, TResult2 = never>(
+    onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     try {
@@ -191,7 +199,7 @@ class FirebaseQueryBuilder {
       return onfulfilled ? onfulfilled(result) : (result as TResult1);
     } catch (error) {
       if (onrejected) return onrejected(error);
-      return { data: null, error };
+      return { data: null, error } as TResult1;
     }
   }
 
@@ -200,10 +208,27 @@ class FirebaseQueryBuilder {
   }
 
   private get constraints() {
-    return this.limitCount ? [...this.filters, limitQuery(this.limitCount)] : this.filters;
+    // limit is applied after client-side sorting (see executeRead)
+    return this.filters;
   }
 
-  private async execute(): Promise<{ data: unknown; error: null }> {
+  private sortRows<T extends DocumentData>(rows: T[]): T[] {
+    if (this.sorts.length === 0) return rows;
+    return [...rows].sort((a, b) => {
+      for (const { field, ascending } of this.sorts) {
+        const av = a[field];
+        const bv = b[field];
+        if (av === bv) continue;
+        if (av === null || av === undefined) return ascending ? -1 : 1;
+        if (bv === null || bv === undefined) return ascending ? 1 : -1;
+        const cmp = av > bv ? 1 : -1;
+        return ascending ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
+
+  private async execute(): Promise<QueryResult> {
     if (!this.pendingMutation) return this.executeRead();
 
     if (this.pendingMutation.type === "insert") {
@@ -234,8 +259,9 @@ class FirebaseQueryBuilder {
     const docs = await getDocs(query(this.collectionRef, ...this.constraints));
 
     if (this.pendingMutation.type === "update") {
+      const values = this.pendingMutation.values;
       await Promise.all(docs.docs.map((snapshot) => updateDoc(doc(db, this.table, snapshot.id), {
-        ...this.pendingMutation?.values,
+        ...values,
         updated_at: new Date().toISOString(),
       })));
       return { data: docs.docs.map(withId), error: null };
@@ -245,9 +271,10 @@ class FirebaseQueryBuilder {
     return { data: null, error: null };
   }
 
-  private async executeRead(): Promise<{ data: unknown; error: null }> {
+  private async executeRead(): Promise<QueryResult> {
     const snapshot = await getDocs(query(this.collectionRef, ...this.constraints));
-    const rows = snapshot.docs.map(withId);
+    let rows = this.sortRows(snapshot.docs.map(withId));
+    if (this.limitCount !== undefined) rows = rows.slice(0, this.limitCount);
     if (this.singleMode === "single") return { data: rows[0] ?? null, error: null };
     if (this.singleMode === "maybeSingle") return { data: rows[0] ?? null, error: null };
     return { data: rows, error: null };
@@ -258,8 +285,23 @@ function createChannel(tableName: string) {
   let unsubscribe: (() => void) | undefined;
 
   return {
-    on(_eventType: string, _filter: unknown, callback: () => void) {
-      unsubscribe = onSnapshot(collection(db, tableName.split(":").pop() ?? tableName), () => callback());
+    on(_eventType: string, filter: any, callback: (payload?: any) => void) {
+      const table = String(filter?.table ?? tableName.split(":").pop() ?? tableName);
+      unsubscribe = onSnapshot(collection(db, table), (snapshot) => {
+        const changes = snapshot.docChanges();
+        if (changes.length === 0) {
+          callback({ eventType: "SYNC", new: {}, old: {} });
+          return;
+        }
+        for (const change of changes) {
+          const row = withId(change.doc);
+          callback({
+            eventType: change.type === "added" ? "INSERT" : change.type === "modified" ? "UPDATE" : "DELETE",
+            new: change.type === "removed" ? {} : row,
+            old: change.type === "removed" ? row : {},
+          });
+        }
+      });
       return this;
     },
     subscribe() {
@@ -311,7 +353,8 @@ export const supabase = {
           await uploadBytes(storageRef, file);
           return { data: { path }, error: null };
         },
-        async createSignedUrl(path: string) {
+        async createSignedUrl(path: string, _expiresIn?: number) {
+          void _expiresIn;
           const signedUrl = await getDownloadURL(ref(storage, `${bucket}/${path}`));
           return { data: { signedUrl }, error: null };
         },

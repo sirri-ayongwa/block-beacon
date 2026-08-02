@@ -39,7 +39,7 @@ export function IssueComments({ issueId, currentUserId, isModerator, isVerifiedM
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.from("moderator_profiles" as any) as any).select("id, verified").in("id", userIds),
       ]);
-      const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+      const nameMap = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.display_name]));
       const verMap = new Map(((mods as Array<{ id: string; verified: boolean }> | null) ?? []).map((m) => [m.id, m.verified]));
       list.forEach((c) => {
         c.display_name = nameMap.get(c.user_id) ?? null;
