@@ -28,14 +28,16 @@ function AuthPage() {
   const navigate = useNavigate();
   const { t } = useT();
   const { role: roleParam } = useSearch({ from: "/auth" }) as { role: "moderator" | "neighbor" };
-  const [role] = useState<"moderator" | "neighbor">(() => {
-    if (roleParam === "moderator") return "moderator";
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("bb.signup_role");
-      if (stored === "moderator") return "moderator";
-    }
-    return "neighbor";
-  });
+  // Start from the URL only — reading localStorage during render breaks hydration.
+  const [role, setRole] = useState<"moderator" | "neighbor">(
+    roleParam === "moderator" ? "moderator" : "neighbor",
+  );
+
+  useEffect(() => {
+    if (roleParam === "moderator") return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("bb.signup_role") === "moderator") setRole("moderator");
+  }, [roleParam]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
