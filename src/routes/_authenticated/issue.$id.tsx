@@ -71,8 +71,17 @@ function IssueDetail() {
         supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
       ]);
 
+      // Debug logging to help diagnose why an issue might not be found
+      // eslint-disable-next-line no-console
+      console.debug("IssueDetail.loadAll result", { id, issueData, photoCount: (photoData ?? []).length, eventCount: (eventData ?? []).length });
+
       if (!issueData) {
+        // Surface a helpful toast so users and developers know the id that failed to load
+        toast.error(`This report isn't available (id: ${id}).`);
         setIssue(null);
+        setPhotos([]);
+        setEvents([]);
+        setVoters([]);
         return;
       }
 
@@ -81,30 +90,40 @@ function IssueDetail() {
       const evts = (eventData ?? []) as StatusEvent[];
       const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
       if (authorIds.length) {
-        const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
-        const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
-        evts.forEach((e) => {
-          e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null;
-        });
+        try {
+          const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
+          const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
+          evts.forEach((e) => {
+            e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null;
+          });
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to fetch author profiles:", err);
+        }
       }
       setEvents(evts);
 
       // Reporter display name (respect anonymity)
       if (!issueData.is_anonymous) {
-        const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", issueData.reporter_id).maybeSingle();
-        setReporterName(prof?.display_name ?? "A neighbor");
+        try {
+          const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", issueData.reporter_id).maybeSingle();
+          setReporterName(prof?.display_name ?? "A neighbor");
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to fetch reporter profile:", err);
+          setReporterName(null);
+        }
       } else {
         setReporterName(null);
       }
 
-      // Sign photo URLs
+      // Sign photo URLs — make each sign call resilient
       const withUrls = await Promise.all(
         (photoData ?? []).map(async (p) => {
           try {
             const { data } = await supabase.storage.from("issue-photos").createSignedUrl(p.path, 3600);
             return { ...p, url: data?.signedUrl } as Photo;
           } catch (err) {
-            // If signing fails for a single photo, log and continue without blocking the whole page
             // eslint-disable-next-line no-console
             console.error("Failed to create signed URL for photo", p, err);
             return { ...p, url: undefined } as Photo;
@@ -114,22 +133,26 @@ function IssueDetail() {
       setPhotos(withUrls);
 
       // Voters + display names
-      const { data: votes } = await supabase.from("issue_votes").select("user_id, created_at").eq("issue_id", id).order("created_at", { ascending: false });
-      const voterIds = (votes ?? []).map((v) => v.user_id);
-      if (voterIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", voterIds);
-        const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
-        setVoters(
-          (votes ?? []).map((v) => ({
-            user_id: v.user_id,
-            created_at: v.created_at,
-            display_name: nameMap.get(v.user_id) ?? null,
-            // We don't expose per-vote anonymity yet — but we hide names for voters
-            // whose profile has no display_name so they appear as "A neighbor".
-            is_anonymous: !nameMap.get(v.user_id),
-          }))
-        );
-      } else {
+      try {
+        const { data: votes } = await supabase.from("issue_votes").select("user_id, created_at").eq("issue_id", id).order("created_at", { ascending: false });
+        const voterIds = (votes ?? []).map((v) => v.user_id);
+        if (voterIds.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", voterIds);
+          const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+          setVoters(
+            (votes ?? []).map((v) => ({
+              user_id: v.user_id,
+              created_at: v.created_at,
+              display_name: nameMap.get(v.user_id) ?? null,
+              is_anonymous: !nameMap.get(v.user_id),
+            }))
+          );
+        } else {
+          setVoters([]);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load voters:", err);
         setVoters([]);
       }
     } catch (err) {
@@ -138,6 +161,9 @@ function IssueDetail() {
       console.error("Failed to load issue details:", err);
       toast.error("Couldn't load this report right now. Try again soon.");
       setIssue(null);
+      setPhotos([]);
+      setEvents([]);
+      setVoters([]);
     } finally {
       setLoading(false);
     }
@@ -224,7 +250,10 @@ function IssueDetail() {
       <div className="min-h-screen grid place-items-center text-center px-6">
         <div>
           <div className="text-lg font-semibold">This report isn't here.</div>
-          <Link to="/map" className="text-sm text-primary underline">Back to the map</Link>
+          <div className="mt-3 flex items-center gap-3 justify-center">
+            <button onClick={() => loadAll()} className="rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground">Retry</button>
+            <Link to="/map" className="text-sm text-primary underline">Back to the map</Link>
+          </div>
         </div>
       </div>
     );
