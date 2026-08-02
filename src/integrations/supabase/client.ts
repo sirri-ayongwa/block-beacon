@@ -285,8 +285,23 @@ function createChannel(tableName: string) {
   let unsubscribe: (() => void) | undefined;
 
   return {
-    on(_eventType: string, _filter: unknown, callback: () => void) {
-      unsubscribe = onSnapshot(collection(db, tableName.split(":").pop() ?? tableName), () => callback());
+    on(_eventType: string, filter: any, callback: (payload?: any) => void) {
+      const table = String(filter?.table ?? tableName.split(":").pop() ?? tableName);
+      unsubscribe = onSnapshot(collection(db, table), (snapshot) => {
+        const changes = snapshot.docChanges();
+        if (changes.length === 0) {
+          callback({ eventType: "SYNC", new: {}, old: {} });
+          return;
+        }
+        for (const change of changes) {
+          const row = withId(change.doc);
+          callback({
+            eventType: change.type === "added" ? "INSERT" : change.type === "modified" ? "UPDATE" : "DELETE",
+            new: change.type === "removed" ? {} : row,
+            old: change.type === "removed" ? row : {},
+          });
+        }
+      });
       return this;
     },
     subscribe() {
@@ -338,7 +353,8 @@ export const supabase = {
           await uploadBytes(storageRef, file);
           return { data: { path }, error: null };
         },
-        async createSignedUrl(path: string) {
+        async createSignedUrl(path: string, _expiresIn?: number) {
+          void _expiresIn;
           const signedUrl = await getDownloadURL(ref(storage, `${bucket}/${path}`));
           return { data: { signedUrl }, error: null };
         },
