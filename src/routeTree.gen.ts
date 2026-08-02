@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResetPasswordConfirmRouteImport } from './routes/reset-password.confirm'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -36,6 +38,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -54,6 +61,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordConfirmRoute = ResetPasswordConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => ResetPasswordRoute,
 } as any)
 const LegalTermsRoute = LegalTermsRouteImport.update({
   id: '/legal/terms',
@@ -112,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
+  '/reset-password': typeof ResetPasswordRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-email': typeof VerifyEmailRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
@@ -120,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
@@ -129,6 +143,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
+  '/reset-password': typeof ResetPasswordRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-email': typeof VerifyEmailRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
@@ -137,6 +152,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
@@ -148,6 +164,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/join': typeof JoinRoute
+  '/reset-password': typeof ResetPasswordRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
@@ -156,6 +173,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
   '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
@@ -167,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/join'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/verify-email'
     | '/leaderboard'
@@ -175,6 +194,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/reset-password/confirm'
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
@@ -184,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/join'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/verify-email'
     | '/leaderboard'
@@ -192,6 +213,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/reset-password/confirm'
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
@@ -202,6 +224,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/join'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/verify-email'
     | '/_authenticated/leaderboard'
@@ -210,6 +233,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/reset-password/confirm'
     | '/_authenticated/issue/$id'
     | '/_authenticated/moderator_/apply'
     | '/api/public/contact-email'
@@ -221,6 +245,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   JoinRoute: typeof JoinRoute
+  ResetPasswordRoute: typeof ResetPasswordRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
@@ -243,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -272,6 +304,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/confirm': {
+      id: '/reset-password/confirm'
+      path: '/confirm'
+      fullPath: '/reset-password/confirm'
+      preLoaderRoute: typeof ResetPasswordConfirmRouteImport
+      parentRoute: typeof ResetPasswordRoute
     }
     '/legal/terms': {
       id: '/legal/terms'
@@ -367,11 +406,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ResetPasswordRouteChildren {
+  ResetPasswordConfirmRoute: typeof ResetPasswordConfirmRoute
+}
+
+const ResetPasswordRouteChildren: ResetPasswordRouteChildren = {
+  ResetPasswordConfirmRoute: ResetPasswordConfirmRoute,
+}
+
+const ResetPasswordRouteWithChildren = ResetPasswordRoute._addFileChildren(
+  ResetPasswordRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   JoinRoute: JoinRoute,
+  ResetPasswordRoute: ResetPasswordRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
@@ -382,13 +434,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
