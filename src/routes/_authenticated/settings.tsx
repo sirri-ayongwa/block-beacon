@@ -39,11 +39,44 @@ function SettingsPage() {
   const [prefs, setPrefs] = useState<NotifPrefs>(() => getNotifPrefs());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [myEmail, setMyEmail] = useState<string>("");
+  const [testingDigest, setTestingDigest] = useState(false);
+
+  const canTestDigest = myEmail.trim().toLowerCase() === "ayongwaayongwasirri@gmail.com";
+
+  async function sendTestDigest() {
+    setTestingDigest(true);
+    try {
+      const { data: recent } = await supabase
+        .from("issues")
+        .select("title, category, status, upvote_count")
+        .order("upvote_count", { ascending: false })
+        .limit(5);
+
+      const response = await fetch("/api/public/digest-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: myEmail.trim().toLowerCase(),
+          name: displayName || "neighbor",
+          issues: recent ?? [],
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || `Failed (${response.status})`);
+      toast.success("Test digest sent — check your inbox (and spam).");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send the test digest");
+    } finally {
+      setTestingDigest(false);
+    }
+  }
 
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
+      setMyEmail(userData.user.email ?? "");
       const { data } = await supabase
         .from("profiles")
         .select("display_name, country, home_lat, home_lng, home_zoom, default_anonymous, digest_subscribed")
