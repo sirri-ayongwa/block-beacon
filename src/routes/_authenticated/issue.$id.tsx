@@ -63,13 +63,23 @@ function IssueDetail() {
   }, []);
 
   async function loadAll() {
+    try {
+      await loadAllInner();
+    } catch (err) {
+      console.error("Failed to load issue details", err);
+      toast.error("We couldn't load this report. Pull to refresh or try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAllInner() {
     const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
       supabase.from("issues").select("*").eq("id", id).maybeSingle(),
       supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
       supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
     ]);
     if (!issueData) {
-      setLoading(false);
       return;
     }
     setIssue(issueData as IssueRow);
@@ -118,7 +128,6 @@ function IssueDetail() {
     } else {
       setVoters([]);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
