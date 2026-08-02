@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { buildDigestHtml, sendTransactionalEmail, type DigestIssue } from "@/lib/email.server";
+import { buildDigestHtml, sendMailchimpTransactional, type DigestIssue } from "@/lib/email.server";
 
 function getServerEnv(name: string) {
   return typeof process !== "undefined" ? process.env?.[name] : undefined;
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/public/weekly-digest")({
         const { to, name, issues = [] } = await request.json();
         if (!to) return Response.json({ error: "Missing recipient email" }, { status: 400 });
 
-        await sendTransactionalEmail({
+        await sendMailchimpTransactional({
           to,
           name,
           subject: "Your BlockBeacon weekly digest",
