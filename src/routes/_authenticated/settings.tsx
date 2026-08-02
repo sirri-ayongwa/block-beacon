@@ -42,7 +42,7 @@ function SettingsPage() {
   const [myEmail, setMyEmail] = useState<string>("");
   const [testingDigest, setTestingDigest] = useState(false);
 
-  const canTestDigest = myEmail.trim().toLowerCase() === "ayongwaayongwasirri@gmail.com";
+  const canTestDigest = myEmail.trim().toLowerCase() === "ayongwasirri@gmail.com";
 
   async function sendTestDigest() {
     setTestingDigest(true);
