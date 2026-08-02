@@ -145,7 +145,7 @@ function AuthPage() {
                 data-testid="google-signin-btn"
                 className="mt-5 w-full rounded-full border border-border bg-background py-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.56c2.08-1.92 3.28-4.74 3.2[...]"
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.56c2.08-1.92 3.28-4.74 3.2[...]" />
                 {t("continueWithGoogle")}
               </button>
 
@@ -188,6 +188,20 @@ function AuthPage() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+
+            <p className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") window.localStorage.setItem("bb.reset_role", role);
+                  // navigate to the reset page; use a full navigation to include origin properly in some build flows
+                  window.location.href = `/reset-password?role=${role}`;
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            </p>
 
             <button
               type="submit"
