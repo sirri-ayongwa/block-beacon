@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { buildDigestHtml, sendMailchimpTransactional, type DigestIssue } from "@/lib/email.server";
+import { buildDigestHtml, sendTransactionalEmail, type DigestIssue } from "@/lib/email.server";
  
 // Only this account may fire a test digest.
 const ALLOWED_TESTER = "ayongwasirri@gmail.com";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/public/digest-test")({
 
         const issues = Array.isArray(payload.issues) ? payload.issues.slice(0, 10) : [];
         try {
-          await sendMailchimpTransactional({
+          await sendTransactionalEmail({
             to: email,
             name: payload.name || "neighbor",
             subject: "Test — your BlockBeacon weekly digest",
