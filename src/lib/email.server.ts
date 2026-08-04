@@ -107,3 +107,17 @@ export function buildDigestHtml(name: string | undefined, issues: DigestIssue[])
   </div>
 </body></html>`;
 }
+
+export async function sendResendEmail(input: {
+  replyTo: string;
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  return sendMailchimpTransactional({
+    to: getServerEnv("ADMIN_EMAIL") || "admin@blockbeacon.app",
+    name: "BlockBeacon Admin",
+    subject: input.subject,
+    html: input.html,
+  });
+}

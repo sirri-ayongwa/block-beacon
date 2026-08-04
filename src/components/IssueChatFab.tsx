@@ -87,6 +87,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     }).select("*").single();
     if (error) { toast.error(error.message); return; }
     setTitle("");
+    setRooms((prev) => [data as Room, ...prev]);
     setActiveRoom((data as Room).id);
     setMode("room");
     toast.success(`Chat opened — expires in ${days} days.`);

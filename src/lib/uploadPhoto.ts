@@ -1,4 +1,5 @@
-import { auth, firebaseApp } from "@/integrations/firebase/client";
+import { auth, storage } from "@/integrations/firebase/client";
+import { ref, uploadBytesResumable } from "firebase/storage";
 
 export type UploadHandle = {
   promise: Promise<void>;
@@ -11,45 +12,32 @@ export function uploadPhotoWithProgress(
   blob: Blob,
   onProgress: (pct: number) => void,
 ): UploadHandle {
-  let request: XMLHttpRequest | null = null;
-  let cancelled = false;
+  let uploadTask: any = null;
 
-  const promise = new Promise<void>(async (resolve, reject) => {
+  const promise = new Promise<void>((resolve, reject) => {
     try {
       const user = auth.currentUser;
-      const storageBucket = firebaseApp.options.storageBucket;
       if (!user) throw new Error("Please sign in again before uploading a photo");
-      if (!storageBucket) throw new Error("Photo storage is not configured");
 
-      const token = await user.getIdToken();
-      if (cancelled) throw new Error("Upload cancelled");
+      const storageRef = ref(storage, `${bucket}/${path}`);
+      uploadTask = uploadBytesResumable(storageRef, blob, {
+        contentType: blob.type || "image/webp",
+      });
 
-      const objectName = `${bucket}/${path}`;
-      const url = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(storageBucket)}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
-      const xhr = new XMLHttpRequest();
-      request = xhr;
-      xhr.open("POST", url);
-      xhr.timeout = 60_000;
-      xhr.setRequestHeader("Authorization", `Firebase ${token}`);
-      xhr.setRequestHeader("Content-Type", blob.type || "image/webp");
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return;
-        const percent = Math.max(1, Math.min(99, Math.round((event.loaded / event.total) * 100)));
-        onProgress(percent);
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
+      uploadTask.on(
+        "state_changed",
+        (snapshot: any) => {
+          const percent = Math.max(1, Math.min(99, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)));
+          onProgress(percent);
+        },
+        (error: any) => {
+          reject(new Error(error.message || "Photo upload failed"));
+        },
+        () => {
           onProgress(100);
           resolve();
-          return;
         }
-        reject(new Error(`Photo upload failed (${xhr.status})`));
-      };
-      xhr.onerror = () => reject(new Error("Photo upload failed. Check your connection and retry."));
-      xhr.ontimeout = () => reject(new Error("Photo upload timed out. Tap Retry to try again."));
-      xhr.onabort = () => reject(new Error("Upload cancelled"));
-      onProgress(1);
-      xhr.send(blob);
+      );
     } catch (error) {
       reject(error instanceof Error ? error : new Error("Photo upload failed"));
     }
@@ -58,8 +46,9 @@ export function uploadPhotoWithProgress(
   return {
     promise,
     abort: () => {
-      cancelled = true;
-      request?.abort();
+      if (uploadTask) {
+        uploadTask.cancel();
+      }
     },
   };
 }
