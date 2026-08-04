@@ -1,10 +1,4 @@
-import { storage } from "@/integrations/firebase/client";
-import {
-  ref,
-  uploadBytesResumable,
-  uploadBytes,
-  type UploadTask,
-} from "firebase/storage";
+import { auth, firebaseApp } from "@/integrations/firebase/client";
 
 export type UploadHandle = {
   promise: Promise<void>;
@@ -17,63 +11,47 @@ export function uploadPhotoWithProgress(
   blob: Blob,
   onProgress: (pct: number) => void,
 ): UploadHandle {
-  const storageRef = ref(storage, `${bucket}/${path}`);
-  let task: UploadTask | null = null;
+  let request: XMLHttpRequest | null = null;
   let cancelled = false;
 
-  const metadata = {
-    cacheControl: "public,max-age=31536000",
-    contentType: blob.type || "image/webp",
-  };
-
-  // Some buckets reject the resumable protocol's preflight (custom
-  // x-goog-upload-* headers), which makes the upload sit at 0% forever.
-  // Fall back to a plain single-shot upload when that happens.
-  const simpleUpload = async () => {
-    onProgress(15);
-    await uploadBytes(storageRef, blob, metadata);
-    onProgress(100);
-  };
-
-  const resumableUpload = new Promise<void>((resolve, reject) => {
-    let sawProgress = false;
-    const stallTimer = setTimeout(() => {
-      if (!sawProgress && !cancelled) {
-        try { task?.cancel(); } catch { /* ignore */ }
-        reject(new Error("upload-stalled"));
-      }
-    }, 8000);
-
-    task = uploadBytesResumable(storageRef, blob, {
-      ...metadata,
-    });
-
-    task.on(
-      "state_changed",
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        if (snapshot.bytesTransferred > 0) sawProgress = true;
-        onProgress(Number.isFinite(pct) ? pct : 0);
-      },
-      (error) => {
-        clearTimeout(stallTimer);
-        reject(error);
-      },
-      () => {
-        clearTimeout(stallTimer);
-        onProgress(100);
-        resolve();
-      },
-    );
-  });
-
-  const promise = resumableUpload.catch(async (error) => {
-    if (cancelled) throw error;
-    // Retry once with the simple upload path before giving up.
+  const promise = new Promise<void>(async (resolve, reject) => {
     try {
-      await simpleUpload();
-    } catch {
-      throw error instanceof Error ? error : new Error("Upload failed");
+      const user = auth.currentUser;
+      const storageBucket = firebaseApp.options.storageBucket;
+      if (!user) throw new Error("Please sign in again before uploading a photo");
+      if (!storageBucket) throw new Error("Photo storage is not configured");
+
+      const token = await user.getIdToken();
+      if (cancelled) throw new Error("Upload cancelled");
+
+      const objectName = `${bucket}/${path}`;
+      const url = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(storageBucket)}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
+      const xhr = new XMLHttpRequest();
+      request = xhr;
+      xhr.open("POST", url);
+      xhr.timeout = 60_000;
+      xhr.setRequestHeader("Authorization", `Firebase ${token}`);
+      xhr.setRequestHeader("Content-Type", blob.type || "image/webp");
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const percent = Math.max(1, Math.min(99, Math.round((event.loaded / event.total) * 100)));
+        onProgress(percent);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+          return;
+        }
+        reject(new Error(`Photo upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("Photo upload failed. Check your connection and retry."));
+      xhr.ontimeout = () => reject(new Error("Photo upload timed out. Tap Retry to try again."));
+      xhr.onabort = () => reject(new Error("Upload cancelled"));
+      onProgress(1);
+      xhr.send(blob);
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error("Photo upload failed"));
     }
   });
 
@@ -81,7 +59,7 @@ export function uploadPhotoWithProgress(
     promise,
     abort: () => {
       cancelled = true;
-      try { task?.cancel(); } catch { /* ignore */ }
+      request?.abort();
     },
   };
 }
