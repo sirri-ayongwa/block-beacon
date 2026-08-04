@@ -2,8 +2,6 @@ function getServerEnv(name: string) {
   return typeof process !== "undefined" ? process.env?.[name] : undefined;
 }
 
-const adminEmail = getServerEnv("ADMIN_EMAIL") || "ayongwasirri@gmail.com";
-
 export function escapeHtml(value: string | null | undefined) {
   return String(value || "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -14,39 +12,6 @@ export function escapeHtml(value: string | null | undefined) {
   }[char] as string));
 }
 
-export async function sendResendEmail(input: {
-  to?: string[];
-  replyTo?: string;
-  subject: string;
-  text: string;
-  html: string;
-}) {
-  const apiKey = getServerEnv("RESEND_API_KEY");
-  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "BlockBeacon <onboarding@resend.dev>",
-      to: input.to ?? [adminEmail],
-      reply_to: input.replyTo,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Resend failed (${response.status}): ${(await response.text()).slice(0, 300)}`);
-  }
-
-  return response.json();
-}
-
 export async function sendMailchimpTransactional(input: {
   to: string;
   name?: string;
@@ -55,6 +20,8 @@ export async function sendMailchimpTransactional(input: {
 }) {
   const apiKey = getServerEnv("MAILCHIMP_API_KEY");
   if (!apiKey) throw new Error("MAILCHIMP_API_KEY is not configured");
+  const sender = getServerEnv("MAILCHIMP_SENDER_EMAIL");
+  if (!sender) throw new Error("MAILCHIMP_SENDER_EMAIL is not configured");
 
   const response = await fetch("https://mandrillapp.com/api/1.0/messages/send.json", {
     method: "POST",
@@ -62,7 +29,7 @@ export async function sendMailchimpTransactional(input: {
     body: JSON.stringify({
       key: apiKey,
       message: {
-        from_email: adminEmail,
+        from_email: sender,
         from_name: "BlockBeacon",
         subject: input.subject,
         html: input.html,
@@ -78,48 +45,14 @@ export async function sendMailchimpTransactional(input: {
   return response.json();
 }
 
-export async function sendBrevoEmail(input: {
-  to: string;
-  name?: string;
-  subject: string;
-  html: string;
-}) {
-  const apiKey = getServerEnv("BREVO_API_KEY");
-  if (!apiKey) throw new Error("BREVO_API_KEY is not configured");
-  const sender = getServerEnv("BREVO_SENDER_EMAIL") || adminEmail;
-
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "api-key": apiKey },
-    body: JSON.stringify({
-      sender: { name: "BlockBeacon", email: sender },
-      to: [{ email: input.to, name: input.name || "neighbor" }],
-      subject: input.subject,
-      htmlContent: input.html,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Brevo failed (${response.status}): ${(await response.text()).slice(0, 300)}`);
-  }
-  return response.json();
-}
-
-/** Sends through whichever provider is configured, Brevo first. */
+/** Sends BlockBeacon digest messages exclusively through Mailchimp Transactional. */
 export async function sendTransactionalEmail(input: {
   to: string;
   name?: string;
   subject: string;
   html: string;
 }) {
-  if (getServerEnv("BREVO_API_KEY")) return sendBrevoEmail(input);
-  if (getServerEnv("MAILCHIMP_API_KEY")) return sendMailchimpTransactional(input);
-  return sendResendEmail({
-    to: [input.to],
-    subject: input.subject,
-    text: input.subject,
-    html: input.html,
-  });
+  return sendMailchimpTransactional(input);
 }
 
 export type DigestIssue = {
