@@ -1,0 +1,296 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Prototype rules for the current BlockBeacon Firestore migration.
+// Collections mirror the previous Supabase table names used by the app:
+// profiles, issues, issue_votes, issue_photos, issue_status_events,
+// moderator_profiles, user_roles, issue_comments, chat_rooms, chat_messages,
+// notifications.
+//
+// profiles/{uid}: public-facing profile settings keyed by Firebase Auth uid.
+// issues/{issueId}: neighborhood reports with reporter_id, title, category,
+// lat/lng, status, upvote_count, optional photo/handoff fields.
+// issue_votes/{voteId}: vote edge with user_id and issue_id.
+// issue_photos/{photoId}: issue photo metadata with issue_id and storage path.
+// issue_status_events/{eventId}: status audit rows for an issue.
+// moderator_profiles/{uid}: moderator application profile keyed by uid.
+// user_roles/{roleId}: privileged role grants; users may read but not self-grant.
+// issue_comments/{commentId}: issue comment with user_id and body.
+// chat_rooms/{roomId}: temporary issue chat room with created_by.
+// chat_messages/{messageId}: chat message with user_id and room_id.
+// notifications/{notificationId}: user-targeted notification with user_id.
+// contact_messages/{messageId}: footer/contact form submissions with reply email.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidString(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isRecentOrExistingTimestamp(data, field) {
+      return !(field in data) || data[field] is string || data[field] is timestamp;
+    }
+
+    function isValidStatus(status) {
+      return status in ['open', 'acknowledged', 'fixed'];
+    }
+
+    function isValidCategory(category) {
+      return category in [
+        'broken_streetlight',
+        'litter',
+        'pothole',
+        'unsafe_intersection',
+        'graffiti',
+        'damaged_sidewalk',
+        'abandoned_item',
+        'water_leak',
+        'other'
+      ];
+    }
+
+    function isValidProfile(data) {
+      return hasOnlyAllowedFields([
+        'id', 'display_name', 'country', 'default_anonymous', 'digest_subscribed',
+        'digest_weekday', 'digest_last_sent_at', 'home_lat', 'home_lng', 'home_zoom',
+        'preferred_language', 'created_at', 'updated_at'
+      ]) &&
+      data.id is string &&
+      isValidOptionalString(data, 'display_name', 80) &&
+      isValidOptionalString(data, 'country', 80) &&
+      isValidOptionalString(data, 'preferred_language', 16) &&
+      (!(data.default_anonymous is bool) || data.default_anonymous is bool) &&
+      (!(data.digest_subscribed is bool) || data.digest_subscribed is bool) &&
+      (!('digest_weekday' in data) || (data.digest_weekday is number && data.digest_weekday >= 0 && data.digest_weekday <= 6));
+    }
+
+    function isValidIssue(data) {
+      return hasOnlyAllowedFields([
+        'id', 'reporter_id', 'title', 'description', 'category', 'lat', 'lng',
+        'status', 'is_anonymous', 'photo_path', 'photo_phash', 'upvote_count',
+        'created_at', 'updated_at', 'acknowledged_at', 'fixed_at',
+        'handed_off_at', 'handed_off_by', 'handoff_note'
+      ]) &&
+      hasRequiredFields(['id', 'reporter_id', 'title', 'category', 'lat', 'lng']) &&
+      data.reporter_id is string &&
+      isValidString(data.title, 1, 140) &&
+      isValidOptionalString(data, 'description', 2000) &&
+      isValidCategory(data.category) &&
+      data.lat is number &&
+      data.lng is number &&
+      (!('status' in data) || isValidStatus(data.status)) &&
+      (!('is_anonymous' in data) || data.is_anonymous is bool) &&
+      (!('upvote_count' in data) || data.upvote_count is number) &&
+      isValidOptionalString(data, 'photo_path', 300) &&
+      isValidOptionalString(data, 'photo_phash', 128) &&
+      isValidOptionalString(data, 'handoff_note', 1000);
+    }
+
+    function isValidVote(data) {
+      return hasOnlyAllowedFields(['id', 'issue_id', 'user_id', 'created_at']) &&
+      hasRequiredFields(['issue_id', 'user_id']) &&
+      data.issue_id is string &&
+      data.user_id is string;
+    }
+
+    function isValidPhoto(data) {
+      return hasOnlyAllowedFields(['id', 'issue_id', 'path', 'created_at']) &&
+      hasRequiredFields(['issue_id', 'path']) &&
+      data.issue_id is string &&
+      isValidString(data.path, 1, 300);
+    }
+
+    function isValidStatusEvent(data) {
+      return hasOnlyAllowedFields(['id', 'issue_id', 'status', 'note', 'created_by', 'created_at']) &&
+      hasRequiredFields(['issue_id', 'status']) &&
+      data.issue_id is string &&
+      isValidStatus(data.status) &&
+      isValidOptionalString(data, 'note', 1000);
+    }
+
+    function isValidModeratorProfile(data) {
+      return hasOnlyAllowedFields([
+        'id', 'community', 'gov_email', 'organization', 'proof_kind',
+        'proof_photo_path', 'proof_url', 'verified', 'ai_verified',
+        'ai_reason', 'ai_reviewed_at', 'created_at', 'updated_at'
+      ]) &&
+      hasRequiredFields(['id', 'community', 'gov_email', 'organization']) &&
+      data.id is string &&
+      isValidString(data.community, 1, 120) &&
+      isValidString(data.gov_email, 3, 180) &&
+      isValidString(data.organization, 1, 160) &&
+      isValidOptionalString(data, 'proof_kind', 40) &&
+      isValidOptionalString(data, 'proof_photo_path', 300) &&
+      isValidOptionalString(data, 'proof_url', 500) &&
+      (!('verified' in data) || data.verified is bool) &&
+      (!('ai_verified' in data) || data.ai_verified is bool);
+    }
+
+    function isValidComment(data) {
+      return hasOnlyAllowedFields(['id', 'issue_id', 'user_id', 'body', 'is_moderator', 'created_at']) &&
+      hasRequiredFields(['issue_id', 'user_id', 'body']) &&
+      data.issue_id is string &&
+      data.user_id is string &&
+      isValidString(data.body, 1, 1000) &&
+      (!('is_moderator' in data) || data.is_moderator is bool);
+    }
+
+    function isValidChatRoom(data) {
+      return hasOnlyAllowedFields(['id', 'issue_id', 'title', 'created_by', 'created_at', 'expires_at']) &&
+      hasRequiredFields(['title', 'created_by', 'expires_at']) &&
+      isValidString(data.title, 1, 140) &&
+      data.created_by is string &&
+      isValidOptionalString(data, 'issue_id', 80);
+    }
+
+    function isValidChatMessage(data) {
+      return hasOnlyAllowedFields(['id', 'room_id', 'user_id', 'body', 'created_at']) &&
+      hasRequiredFields(['room_id', 'user_id', 'body']) &&
+      data.room_id is string &&
+      data.user_id is string &&
+      isValidString(data.body, 1, 1000);
+    }
+
+    function isValidNotification(data) {
+      return hasOnlyAllowedFields(['id', 'user_id', 'kind', 'title', 'body', 'issue_id', 'image_path', 'read_at', 'created_at']) &&
+      hasRequiredFields(['user_id', 'kind', 'title']) &&
+      data.user_id is string &&
+      isValidString(data.kind, 1, 80) &&
+      isValidString(data.title, 1, 160) &&
+      isValidOptionalString(data, 'body', 1000) &&
+      isValidOptionalString(data, 'issue_id', 80) &&
+      isValidOptionalString(data, 'image_path', 300);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/user_roles/$(request.auth.uid + '_admin'));
+    }
+
+    function isValidContactMessage(data) {
+      return hasOnlyAllowedFields(['topic', 'name', 'email', 'message', 'user_id', 'status', 'created_at', 'updated_at']) &&
+      hasRequiredFields(['topic', 'name', 'email', 'message', 'status']) &&
+      isValidString(data.topic, 1, 80) &&
+      isValidString(data.name, 1, 100) &&
+      isValidString(data.email, 3, 180) &&
+      isValidString(data.message, 1, 4000) &&
+      data.status in ['new', 'read', 'replied'] &&
+      (!('user_id' in data) || data.user_id == null || data.user_id == request.auth.uid);
+    }
+
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && request.resource.data.id == userId && isValidProfile(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    match /issues/{issueId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.reporter_id == request.auth.uid &&
+        request.resource.data.id == issueId &&
+        isValidIssue(request.resource.data);
+      allow update: if isAuthenticated() &&
+        isValidIssue(request.resource.data) &&
+        (
+          resource.data.reporter_id == request.auth.uid ||
+          exists(/databases/$(database)/documents/user_roles/$(request.auth.uid + '_moderator')) ||
+          exists(/databases/$(database)/documents/user_roles/$(request.auth.uid + '_admin'))
+        );
+      allow delete: if isAuthenticated() && resource.data.reporter_id == request.auth.uid;
+    }
+
+    match /issue_votes/{voteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidVote(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /issue_photos/{photoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPhoto(request.resource.data);
+      allow update: if isAuthenticated() && isValidPhoto(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /issue_status_events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidStatusEvent(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /moderator_profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) &&
+        request.resource.data.id == userId &&
+        isValidModeratorProfile(request.resource.data) &&
+        (!('verified' in request.resource.data) || request.resource.data.verified == false);
+      allow delete: if isOwner(userId);
+    }
+
+    match /user_roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
+
+    match /issue_comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidComment(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /chat_rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.created_by == request.auth.uid && isValidChatRoom(request.resource.data);
+      allow update, delete: if isAuthenticated() && resource.data.created_by == request.auth.uid && isValidChatRoom(request.resource.data);
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidChatMessage(request.resource.data);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidNotification(request.resource.data);
+    }
+
+    match /contact_messages/{messageId} {
+      allow create: if isAuthenticated() && isValidContactMessage(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { playChime } from "@/lib/notify";
+import { useT } from "@/lib/useT";
 
 type Notif = {
   id: string;
@@ -21,6 +22,7 @@ type Notif = {
 // and subscribes to realtime inserts so a "handoff" or "50 upvotes" alert
 // appears without a page refresh. Also shows a toast banner on new arrival.
 export function NotificationBell({ userId }: { userId: string | null }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notif[]>([]);
   const [signed, setSigned] = useState<Record<string, string>>({});
@@ -92,7 +94,7 @@ export function NotificationBell({ userId }: { userId: string | null }) {
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative rounded-full border border-border bg-card p-2 hover:bg-secondary"
-        aria-label="Notifications"
+        aria-label={t("notifications")}
       >
         <Bell size={16} />
         {unread > 0 && (
@@ -105,18 +107,18 @@ export function NotificationBell({ userId }: { userId: string | null }) {
       {open && (
         <div className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-xl z-50">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border sticky top-0 bg-card">
-            <div className="text-sm font-semibold">Notifications</div>
+            <div className="text-sm font-semibold">{t("notifications")}</div>
             <div className="flex items-center gap-2">
               {unread > 0 && (
                 <button onClick={markAllRead} className="text-[11px] text-primary hover:underline flex items-center gap-1">
-                  <Check size={11} /> Mark all read
+                  <Check size={11} /> {t("markAllRead")}
                 </button>
               )}
               <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-secondary"><X size={12} /></button>
             </div>
           </div>
           {items.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground text-center">You're all caught up.</p>
+            <p className="p-4 text-sm text-muted-foreground text-center">{t("allCaughtUp")}</p>
           ) : (
             <ul>
               {items.map((n) => (
@@ -140,10 +142,10 @@ export function NotificationBell({ userId }: { userId: string | null }) {
                           onClick={() => setOpen(false)}
                           className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
                         >
-                          Open <ExternalLink size={9} />
+                          {t("open")} <ExternalLink size={9} />
                         </Link>
                       )}
-                      <button onClick={() => dismiss(n.id)} className="ml-auto text-[10px] text-muted-foreground hover:text-destructive">Dismiss</button>
+                      <button onClick={() => dismiss(n.id)} className="ml-auto text-[10px] text-muted-foreground hover:text-destructive">{t("dismiss")}</button>
                     </div>
                   </div>
                 </li>

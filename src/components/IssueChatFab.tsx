@@ -57,7 +57,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     const userIds = Array.from(new Set(list.map((m) => m.user_id)));
     if (userIds.length) {
       const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-      const map = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+      const map = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.display_name]));
       list.forEach((m) => { m.display_name = map.get(m.user_id) ?? null; });
     }
     setMessages(list);
@@ -87,6 +87,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     }).select("*").single();
     if (error) { toast.error(error.message); return; }
     setTitle("");
+    setRooms((prev) => [data as Room, ...prev]);
     setActiveRoom((data as Room).id);
     setMode("room");
     toast.success(`Chat opened — expires in ${days} days.`);

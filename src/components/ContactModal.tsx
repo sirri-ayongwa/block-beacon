@@ -2,9 +2,9 @@ import { useState } from "react";
 import { X, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; topic?: string };
 
-export function ContactModal({ open, onClose }: Props) {
+export function ContactModal({ open, onClose, topic = "Contact us" }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -15,15 +15,25 @@ export function ContactModal({ open, onClose }: Props) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    // No backend endpoint wired yet — we mailto the app owner as a graceful fallback
-    // so the user's message never disappears into a void.
     try {
-      const body = `From: ${name} <${email}>\n\n${message}`;
-      window.location.href = `mailto:hello@blockbeacon.app?subject=${encodeURIComponent(
-        `Contact from ${name || "a neighbor"}`,
-      )}&body=${encodeURIComponent(body)}`;
-      toast.success("Opening your email app…");
-      setTimeout(onClose, 400);
+      const response = await fetch("/api/public/contact-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          message: message.trim(),
+        }),
+      });
+      if (!response.ok) throw new Error((await response.json()).error || "Couldn't send your message");
+      toast.success("Message sent. We'll reply by email.");
+      setName("");
+      setEmail("");
+      setMessage("");
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send your message");
     } finally {
       setBusy(false);
     }
@@ -33,7 +43,7 @@ export function ContactModal({ open, onClose }: Props) {
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-display text-xl font-bold">Get in touch</h2>
+          <h2 className="font-display text-xl font-bold">{topic}</h2>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-secondary"><X size={18} /></button>
         </div>
         <form onSubmit={submit} className="p-5 space-y-3">

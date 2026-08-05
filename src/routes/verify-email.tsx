@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { reload, sendEmailVerification } from "firebase/auth";
+import { auth } from "@/integrations/firebase/client";
 import { toast } from "sonner";
 import { MailCheck, MapPin, RefreshCw } from "lucide-react";
 
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/verify-email")({
   component: VerifyEmailPage,
   head: () => ({
     meta: [
-      { title: "Verify your email — BlockBeacon" },
+      { title: "Verify your email - BlockBeacon" },
       { name: "description", content: "Confirm your email address to unlock BlockBeacon." },
     ],
   }),
@@ -21,41 +22,43 @@ function VerifyEmailPage() {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      if (!user) { navigate({ to: "/auth" }); return; }
-      if (user.email_confirmed_at) {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigate({ to: "/auth" });
+        return;
+      }
+      if (user.emailVerified) {
         const intent = typeof window !== "undefined" ? window.localStorage.getItem("bb.signup_role") : null;
         navigate({ to: intent === "moderator" ? "/moderator/apply" : "/map" });
         return;
       }
       setEmail(user.email ?? "");
-    })();
+    });
+    return unsubscribe;
   }, [navigate]);
 
   async function resend() {
-    if (!email) return;
     setBusy(true);
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/verify-email` },
+      if (!auth.currentUser) throw new Error("Sign in again to resend verification.");
+      await sendEmailVerification(auth.currentUser, {
+        url: `${window.location.origin}/verify-email`,
       });
-      if (error) throw error;
-      toast.success("Verification email sent — check your inbox and spam folder.");
+      toast.success("Verification email sent. Check your inbox and spam folder.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't resend the email");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function iVerified() {
     setChecking(true);
-    const { data, error } = await supabase.auth.refreshSession();
+    const user = auth.currentUser;
+    if (user) await reload(user);
     setChecking(false);
-    if (error || !data.user?.email_confirmed_at) {
-      toast.error("Not verified yet — try the link in your inbox again.");
+    if (!auth.currentUser?.emailVerified) {
+      toast.error("Not verified yet. Try the link in your inbox again.");
       return;
     }
     const intent = typeof window !== "undefined" ? window.localStorage.getItem("bb.signup_role") : null;
@@ -81,12 +84,12 @@ function VerifyEmailPage() {
           </p>
           <button onClick={iVerified} disabled={checking}
             className="mt-6 w-full rounded-full bg-primary py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50 hover:opacity-90">
-            {checking ? "Checking…" : "I clicked the link — take me in"}
+            {checking ? "Checking..." : "I clicked the link - take me in"}
           </button>
           <button onClick={resend} disabled={busy}
             className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline disabled:opacity-50">
             <RefreshCw size={12} className={busy ? "animate-spin" : undefined} />
-            {busy ? "Sending…" : "Resend verification email"}
+            {busy ? "Sending..." : "Resend verification email"}
           </button>
           <p className="mt-6 text-xs text-muted-foreground">
             Wrong address? <Link to="/auth" className="underline">Sign in with a different account</Link>.

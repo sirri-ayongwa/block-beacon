@@ -63,13 +63,23 @@ function IssueDetail() {
   }, []);
 
   async function loadAll() {
+    try {
+      await loadAllInner();
+    } catch (err) {
+      console.error("Failed to load issue details", err);
+      toast.error("We couldn't load this report. Pull to refresh or try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAllInner() {
     const [{ data: issueData }, { data: photoData }, { data: eventData }] = await Promise.all([
       supabase.from("issues").select("*").eq("id", id).maybeSingle(),
       supabase.from("issue_photos").select("id, path").eq("issue_id", id).order("created_at"),
       supabase.from("issue_status_events").select("id, status, note, created_at, created_by").eq("issue_id", id).order("created_at"),
     ]);
     if (!issueData) {
-      setLoading(false);
       return;
     }
     setIssue(issueData as IssueRow);
@@ -77,7 +87,7 @@ function IssueDetail() {
     const authorIds = Array.from(new Set(evts.map((e) => e.created_by).filter((x): x is string => !!x)));
     if (authorIds.length) {
       const { data: authorProfs } = await supabase.from("profiles").select("id, display_name").in("id", authorIds);
-      const nameMap = new Map((authorProfs ?? []).map((p) => [p.id, p.display_name]));
+      const nameMap = new Map<string, string | null>((authorProfs ?? []).map((p: any) => [p.id, p.display_name]));
       evts.forEach((e) => { e.author_name = e.created_by ? nameMap.get(e.created_by) ?? null : null; });
     }
     setEvents(evts);
@@ -92,7 +102,7 @@ function IssueDetail() {
 
     // Sign photo URLs
     const withUrls = await Promise.all(
-      (photoData ?? []).map(async (p) => {
+      (photoData ?? []).map(async (p: any) => {
         const { data } = await supabase.storage.from("issue-photos").createSignedUrl(p.path, 3600);
         return { ...p, url: data?.signedUrl } as Photo;
       })
@@ -101,12 +111,12 @@ function IssueDetail() {
 
     // Voters + display names
     const { data: votes } = await supabase.from("issue_votes").select("user_id, created_at").eq("issue_id", id).order("created_at", { ascending: false });
-    const voterIds = (votes ?? []).map((v) => v.user_id);
+    const voterIds = (votes ?? []).map((v: any) => v.user_id);
     if (voterIds.length > 0) {
       const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", voterIds);
-      const nameMap = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+      const nameMap = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.display_name]));
       setVoters(
-        (votes ?? []).map((v) => ({
+        (votes ?? []).map((v: any) => ({
           user_id: v.user_id,
           created_at: v.created_at,
           display_name: nameMap.get(v.user_id) ?? null,
@@ -118,7 +128,6 @@ function IssueDetail() {
     } else {
       setVoters([]);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
