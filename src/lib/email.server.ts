@@ -15,6 +15,7 @@ export function escapeHtml(value: string | null | undefined) {
 export async function sendMailchimpTransactional(input: {
   to: string;
   name?: string;
+  replyTo?: string;
   subject: string;
   html: string;
 }) {
@@ -31,6 +32,7 @@ export async function sendMailchimpTransactional(input: {
       message: {
         from_email: sender,
         from_name: "BlockBeacon",
+        headers: input.replyTo ? { "Reply-To": input.replyTo } : undefined,
         subject: input.subject,
         html: input.html,
         to: [{ email: input.to, name: input.name || "neighbor", type: "to" }],
