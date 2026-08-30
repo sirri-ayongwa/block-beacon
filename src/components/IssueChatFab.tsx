@@ -238,9 +238,11 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
       {/* Room */}
       {mode === "room" && activeRoom && (
         <>
-          <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/40">
-            <Timer size={10} /> auto-delete {format(new Date(room.expires_at), "MMM d")}
-          </div>
+          {room && (
+            <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/40">
+              <Timer size={10} /> auto-delete {format(new Date(room.expires_at), "MMM d")}
+            </div>
+          )}
           <div className="overflow-y-auto flex-1 px-3 py-3 space-y-2">
             {messages.length === 0 && <p className="text-xs text-muted-foreground text-center">No messages yet — say hi 👋</p>}
             {messages.map((m) => (
