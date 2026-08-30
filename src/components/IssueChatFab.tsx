@@ -154,7 +154,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
           )}
           <MessageCircle size={14} className="text-primary" />
           <div className="font-semibold text-sm truncate">
-            {mode === "room" && room ? room.title : mode === "create" ? "New chat" : "Neighbor chats"}
+            {mode === "room" ? (room?.title ?? "Chat") : mode === "create" ? "New chat" : "Neighbor chats"}
           </div>
         </div>
       </div>
@@ -236,7 +236,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
       )}
 
       {/* Room */}
-      {mode === "room" && room && (
+      {mode === "room" && activeRoom && (
         <>
           <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/40">
             <Timer size={10} /> auto-delete {format(new Date(room.expires_at), "MMM d")}
