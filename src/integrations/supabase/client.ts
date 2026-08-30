@@ -1,4 +1,6 @@
-import { auth, db, storage } from "@/integrations/firebase/client";
+import { auth, db } from "@/integrations/firebase/client";
+import { createPhotoSignedUrl, downloadPhoto } from "@/lib/photoStorage";
+import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import {
   addDoc,
@@ -347,19 +349,26 @@ export const supabase = {
   storage: {
     from(bucket: string) {
       return {
-        async upload(path: string, file: Blob | Uint8Array | ArrayBuffer, options?: { upsert?: boolean }) {
+        async upload(path: string, file: Blob, options?: { upsert?: boolean }) {
           void options;
-          const storageRef = ref(storage, `${bucket}/${path}`);
-          await uploadBytes(storageRef, file);
-          return { data: { path }, error: null };
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const handle = uploadPhotoWithProgress(bucket, path, file, () => {});
+              handle.promise.then(resolve, reject);
+            });
+            return { data: { path }, error: null };
+          } catch (e) {
+            return { data: null, error: { message: e instanceof Error ? e.message : "Upload failed" } };
+          }
         },
-        async createSignedUrl(path: string, _expiresIn?: number) {
-          void _expiresIn;
-          const signedUrl = await getDownloadURL(ref(storage, `${bucket}/${path}`));
+        async createSignedUrl(path: string, expiresIn?: number) {
+          const signedUrl = await createPhotoSignedUrl(bucket, path, expiresIn ?? 3600);
+          if (!signedUrl) return { data: null, error: { message: "Could not load photo" } };
           return { data: { signedUrl }, error: null };
         },
         async download(path: string) {
-          const blob = await getBlob(ref(storage, `${bucket}/${path}`));
+          const blob = await downloadPhoto(bucket, path);
+          if (!blob) return { data: null, error: { message: "Could not download photo" } };
           return { data: blob, error: null };
         },
       };
