@@ -90,9 +90,12 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
       title: title.trim().slice(0, 120),
       expires_at: expires,
     }).select("*").single();
-    if (error) { toast.error(error.message); return; }
+    if (error || !data) { toast.error(error?.message ?? "Couldn't open that chat"); return; }
+    const created = data as Room;
     setTitle("");
-    setActiveRoom((data as Room).id);
+    // Show it right away instead of waiting for the next refresh.
+    setRooms((prev) => (prev.some((r) => r.id === created.id) ? prev : [created, ...prev]));
+    setActiveRoom(created.id);
     setMode("room");
     toast.success(`Chat opened — expires in ${days} days.`);
   }
