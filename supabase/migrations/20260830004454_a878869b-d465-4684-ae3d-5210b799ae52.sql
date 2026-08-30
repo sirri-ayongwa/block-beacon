@@ -1,0 +1,2 @@
+create policy "anon can view issue photos" on storage.objects for select to anon using (bucket_id = 'issue-photos');
+create policy "anon can upload issue photos" on storage.objects for insert to anon with check (bucket_id = 'issue-photos');
