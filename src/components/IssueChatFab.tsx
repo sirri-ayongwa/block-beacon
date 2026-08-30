@@ -31,9 +31,14 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     const { data } = await (supabase.from("chat_rooms" as any) as any)
       .select("*")
       .eq("issue_id", issueId)
-      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
-    setRooms((data as Room[] | null) ?? []);
+    // Expiry is filtered here (not in the query) so a chat shows up the moment
+    // it's created, on every backend.
+    const now = Date.now();
+    const live = ((data as Room[] | null) ?? []).filter(
+      (r) => !r.expires_at || new Date(r.expires_at).getTime() > now,
+    );
+    setRooms(live);
   }
 
   useEffect(() => {
