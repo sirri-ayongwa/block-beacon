@@ -2,6 +2,22 @@ import { auth, db } from "@/integrations/firebase/client";
 import { createPhotoSignedUrl, downloadPhoto } from "@/lib/photoStorage";
 import { uploadPhotoWithProgress } from "@/lib/uploadPhoto";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  type DocumentData,
+  type WhereFilterOp,
+  type QueryConstraint,
+} from "firebase/firestore";
 
 type AuthEvent = "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED";
 
