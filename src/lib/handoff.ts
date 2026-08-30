@@ -19,8 +19,8 @@ export type HandoffIssue = {
 export const HANDOFF_NOTE =
   "Handed off to a verified city-hall moderator — the request has been logged and forwarded to the responsible department. Neighbors will see the status here as it moves.";
 
-// Compose a 311-style plain-text email body for city officials.
-export function build311EmailBody(issue: HandoffIssue, community: string, senderOrg: string): string {
+// Compose a plain-text referral email body for local authorities.
+export function buildReferralEmailBody(issue: HandoffIssue, community: string, senderOrg: string): string {
   const cat = CATEGORY_MAP[issue.category]?.label ?? issue.category;
   const mapUrl = `https://www.openstreetmap.org/?mlat=${issue.lat}&mlon=${issue.lng}#map=19/${issue.lat}/${issue.lng}`;
   return [
@@ -44,7 +44,7 @@ export function build311EmailBody(issue: HandoffIssue, community: string, sender
   ].join("\n");
 }
 
-// Client-side PDF builder for the same 311-style document, so the moderator
+// Client-side PDF builder for the same referral document, so the moderator
 // can attach it or archive it. Returns a Blob URL for download.
 export function buildHandoffPdf(issue: HandoffIssue, community: string, senderOrg: string): { url: string; filename: string } {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -54,7 +54,7 @@ export function buildHandoffPdf(issue: HandoffIssue, community: string, senderOr
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
-  doc.text("Community Issue Handoff — 311 Referral", marginX, y);
+  doc.text("Community Issue Referral — Official Handoff", marginX, y);
   y += 26;
 
   doc.setFont("helvetica", "normal");

@@ -5,7 +5,7 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
     const user = await waitForFirebaseUser();
-    if (!user) throw redirect({ to: "/auth" });
+    if (!user) throw redirect({ to: "/auth", search: { role: "neighbor" } });
 
     if (!user.emailVerified) {
       throw redirect({ to: "/verify-email" });
