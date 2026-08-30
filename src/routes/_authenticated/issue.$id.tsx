@@ -9,7 +9,7 @@ import { IssueComments } from "@/components/IssueComments";
 import { IssueChatFab } from "@/components/IssueChatFab";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useModeratorStatus } from "@/lib/roles";
-import { HANDOFF_NOTE, build311EmailBody, buildHandoffPdf } from "@/lib/handoff";
+import { HANDOFF_NOTE, buildReferralEmailBody, buildHandoffPdf } from "@/lib/handoff";
 import { Send } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/issue/$id")({
@@ -190,7 +190,7 @@ function IssueDetail() {
     }).eq("id", issue.id);
     if (error) { toast.error(error.message); return; }
     const subject = `[BlockBeacon] ${CATEGORY_MAP[issue.category]?.label ?? "Community issue"} — ${issue.title}`;
-    const body = build311EmailBody(issue, modProfile.community, modProfile.organization);
+    const body = buildReferralEmailBody(issue, modProfile.community, modProfile.organization);
     const { url, filename } = buildHandoffPdf(issue, modProfile.community, modProfile.organization);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
