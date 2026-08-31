@@ -353,7 +353,7 @@ function MapPage() {
       </header>
 
       {showLocations && (
-        <div className="z-[500] absolute top-[56px] right-3 w-72 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
+        <div className="z-[500] absolute top-[56px] left-3 right-3 sm:left-auto sm:w-72 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
           <div className="text-sm font-semibold mb-2">Jump to a precise address</div>
           <AddressPicker
             initialCountry={country}
