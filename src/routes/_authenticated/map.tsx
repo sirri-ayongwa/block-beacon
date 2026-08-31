@@ -314,7 +314,7 @@ function MapPage() {
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
             <MapPin size={14} strokeWidth={2.5} />
           </span>
-          <span className="hidden xs:inline sm:inline">BlockBeacon</span>
+          <span className="hidden min-[380px]:inline">BlockBeacon</span>
         </Link>
         {/* Actions scroll sideways on small screens so nothing gets cut off */}
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
