@@ -7,7 +7,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useModeratorStatus } from "@/lib/roles";
 import { CATEGORY_MAP, STATUS_LABEL, type IssueCategory } from "@/lib/categories";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
-import { build311EmailBody, buildHandoffPdf, HANDOFF_NOTE, type HandoffIssue } from "@/lib/handoff";
+import { buildReferralEmailBody, buildHandoffPdf, HANDOFF_NOTE, type HandoffIssue } from "@/lib/handoff";
 import { useT } from "@/lib/useT";
 
 type IssueRow = HandoffIssue & {
@@ -88,8 +88,8 @@ function ModeratorDashboard() {
     setBusy(null);
     if (error) { toast.error(error.message); return; }
 
-    // Build the 311-style deliverables and open both for the moderator.
-    const body = build311EmailBody(issue, profile.community, profile.organization);
+    // Build the referral deliverables and open both for the moderator.
+    const body = buildReferralEmailBody(issue, profile.community, profile.organization);
     const subject = `[BlockBeacon] ${CATEGORY_MAP[issue.category]?.label ?? "Community issue"} — ${issue.title}`;
     const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     const { url, filename } = buildHandoffPdf(issue, profile.community, profile.organization);

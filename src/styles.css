@@ -163,3 +163,7 @@
 .beacon-pin > span { transform: rotate(45deg); font-size: 14px; }
 .beacon-pin.status-acknowledged { background: var(--color-warning); }
 .beacon-pin.status-fixed { background: var(--color-success); }
+
+/* Horizontal action rows on small screens scroll without an ugly scrollbar. */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

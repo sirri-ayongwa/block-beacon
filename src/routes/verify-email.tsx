@@ -24,7 +24,7 @@ function VerifyEmailPage() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) {
-        navigate({ to: "/auth" });
+        navigate({ to: "/auth", search: { role: "neighbor" } });
         return;
       }
       if (user.emailVerified) {
@@ -92,7 +92,7 @@ function VerifyEmailPage() {
             {busy ? "Sending..." : "Resend verification email"}
           </button>
           <p className="mt-6 text-xs text-muted-foreground">
-            Wrong address? <Link to="/auth" className="underline">Sign in with a different account</Link>.
+            Wrong address? <Link to="/auth" search={{ role: "neighbor" }} className="underline">Sign in with a different account</Link>.
           </p>
         </div>
       </div>

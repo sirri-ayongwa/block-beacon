@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { escapeHtml, sendResendEmail } from "@/lib/email.server";
+import { escapeHtml, sendMailchimpTransactional } from "@/lib/email.server";
 
 export const Route = createFileRoute("/api/public/contact-email")({
   server: {
@@ -10,10 +10,10 @@ export const Route = createFileRoute("/api/public/contact-email")({
           return Response.json({ error: "Missing name, email, or message" }, { status: 400 });
         }
 
-        await sendResendEmail({
+        await sendMailchimpTransactional({
+          to: process.env["MAILCHIMP_SENDER_EMAIL"] || "ayongwasirri@gmail.com",
           replyTo: email,
           subject: `[BlockBeacon] ${topic || "Community message"} from ${name}`,
-          text: `From: ${name} <${email}>\nTopic: ${topic || "Contact"}\n\n${message}`,
           html: `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5">
             <h2>BlockBeacon community message</h2>
             <p><strong>From:</strong> ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;</p>

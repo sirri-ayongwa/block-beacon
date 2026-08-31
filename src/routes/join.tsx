@@ -64,7 +64,7 @@ function JoinPage() {
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/auth" className="underline">Sign in</Link>
+          <Link to="/auth" search={{ role: "neighbor" as const }} className="underline">Sign in</Link>
         </p>
       </div>
     </div>

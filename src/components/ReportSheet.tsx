@@ -66,15 +66,12 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
         .from("issues")
         .select("id, title, lat, lng, category, status")
         .eq("category", category)
-        .neq("status", "fixed")
-        .gte("lat", location.lat - delta)
-        .lte("lat", location.lat + delta)
-        .gte("lng", location.lng - delta)
-        .lte("lng", location.lng + delta)
-        .limit(20);
+        .limit(100);
       if (cancelled) return;
       let best: { id: string; title: string; distance: number } | null = null;
       for (const row of (data ?? []) as Array<{ id: string; title: string; lat: number; lng: number }>) {
+        if ((row as { status?: string }).status === "fixed") continue;
+        if (row.lat < location.lat - delta || row.lat > location.lat + delta || row.lng < location.lng - delta || row.lng > location.lng + delta) continue;
         const d = haversineMeters(location, { lat: row.lat, lng: row.lng });
         if (d <= 30 && (!best || d < best.distance)) best = { id: row.id, title: row.title, distance: d };
       }

@@ -31,9 +31,14 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     const { data } = await (supabase.from("chat_rooms" as any) as any)
       .select("*")
       .eq("issue_id", issueId)
-      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
-    setRooms((data as Room[] | null) ?? []);
+    // Expiry is filtered here (not in the query) so a chat shows up the moment
+    // it's created, on every backend.
+    const now = Date.now();
+    const live = ((data as Room[] | null) ?? []).filter(
+      (r) => !r.expires_at || new Date(r.expires_at).getTime() > now,
+    );
+    setRooms(live);
   }
 
   useEffect(() => {
@@ -57,7 +62,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
     const userIds = Array.from(new Set(list.map((m) => m.user_id)));
     if (userIds.length) {
       const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-      const map = new Map((profs ?? []).map((p) => [p.id, p.display_name]));
+      const map = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.display_name]));
       list.forEach((m) => { m.display_name = map.get(m.user_id) ?? null; });
     }
     setMessages(list);
@@ -85,9 +90,12 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
       title: title.trim().slice(0, 120),
       expires_at: expires,
     }).select("*").single();
-    if (error) { toast.error(error.message); return; }
+    if (error || !data) { toast.error(error?.message ?? "Couldn't open that chat"); return; }
+    const created = data as Room;
     setTitle("");
-    setActiveRoom((data as Room).id);
+    // Show it right away instead of waiting for the next refresh.
+    setRooms((prev) => (prev.some((r) => r.id === created.id) ? prev : [created, ...prev]));
+    setActiveRoom(created.id);
     setMode("room");
     toast.success(`Chat opened — expires in ${days} days.`);
   }
@@ -146,7 +154,7 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
           )}
           <MessageCircle size={14} className="text-primary" />
           <div className="font-semibold text-sm truncate">
-            {mode === "room" && room ? room.title : mode === "create" ? "New chat" : "Neighbor chats"}
+            {mode === "room" ? (room?.title ?? "Chat") : mode === "create" ? "New chat" : "Neighbor chats"}
           </div>
         </div>
       </div>
@@ -228,11 +236,13 @@ export function IssueChatFab({ issueId, currentUserId }: { issueId: string; curr
       )}
 
       {/* Room */}
-      {mode === "room" && room && (
+      {mode === "room" && activeRoom && (
         <>
-          <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/40">
-            <Timer size={10} /> auto-delete {format(new Date(room.expires_at), "MMM d")}
-          </div>
+          {room && (
+            <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/40">
+              <Timer size={10} /> auto-delete {format(new Date(room.expires_at), "MMM d")}
+            </div>
+          )}
           <div className="overflow-y-auto flex-1 px-3 py-3 space-y-2">
             {messages.length === 0 && <p className="text-xs text-muted-foreground text-center">No messages yet — say hi 👋</p>}
             {messages.map((m) => (
