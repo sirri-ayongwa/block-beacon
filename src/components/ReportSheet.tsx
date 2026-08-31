@@ -103,6 +103,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
+    const hadPhotos = photos.length > 0;
     for (const file of files.slice(0, 3)) {
       try {
         const blob = await compressImage(file);
@@ -118,7 +119,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
           status: "idle",
         };
         setPhotos((prev) => [...prev, staged].slice(0, 3));
-        if (photos.length === 0 && !title.trim() && !description.trim()) {
+        if (!hadPhotos && !title.trim() && !description.trim()) {
           void analyzePhoto(blob);
         }
       } catch {
@@ -128,46 +129,63 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function blobToBase64(blob: Blob): Promise<string> {
+  async function photoToJpegBase64(blob: Blob): Promise<string> {
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not read photo");
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close?.();
+    const jpeg = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((next) => (next ? resolve(next) : reject(new Error("Could not prepare photo"))), "image/jpeg", 0.86);
+    });
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
       reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(jpeg);
     });
   }
 
   async function analyzePhoto(blob: Blob) {
-    if (!navigator.onLine || !location) return;
+    if (!navigator.onLine) return;
     setAiBusy(true);
     try {
-      const delta = 0.001;
-      const { data } = await supabase
-        .from("issues")
-        .select("id, title, description, lat, lng, category, status")
-        .limit(100);
-      const nearbyIssues = ((data ?? []) as Array<{ id: string; title: string; description?: string | null; lat: number; lng: number; category?: string; status?: string }>)
-        .filter((row) => row.status !== "fixed")
-        .filter((row) => row.lat >= location.lat - delta && row.lat <= location.lat + delta && row.lng >= location.lng - delta && row.lng <= location.lng + delta)
-        .map((row) => ({
-          id: row.id,
-          title: row.title,
-          description: row.description,
-          category: row.category,
-          distance: haversineMeters(location, { lat: row.lat, lng: row.lng }),
-        }))
-        .filter((row) => row.distance <= 60)
-        .sort((a, b) => a.distance - b.distance);
+      let nearbyIssues: Array<{ id: string; title: string; description?: string | null; category?: string; distance: number }> = [];
+      if (location) {
+        const delta = 0.001;
+        const { data } = await supabase
+          .from("issues")
+          .select("id, title, description, lat, lng, category, status")
+          .limit(100);
+        nearbyIssues = ((data ?? []) as Array<{ id: string; title: string; description?: string | null; lat: number; lng: number; category?: string; status?: string }>)
+          .filter((row) => row.status !== "fixed")
+          .filter((row) => row.lat >= location.lat - delta && row.lat <= location.lat + delta && row.lng >= location.lng - delta && row.lng <= location.lng + delta)
+          .map((row) => ({
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            category: row.category,
+            distance: haversineMeters(location, { lat: row.lat, lng: row.lng }),
+          }))
+          .filter((row) => row.distance <= 60)
+          .sort((a, b) => a.distance - b.distance);
+      }
 
       const response = await fetch("/api/public/analyze-report-photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: await blobToBase64(blob),
+          imageBase64: await photoToJpegBase64(blob),
           nearbyIssues,
         }),
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        toast.error("AI could not read this photo. Try another angle or fill the details manually.");
+        return;
+      }
       const result = await response.json() as {
         title?: string;
         description?: string;
@@ -175,9 +193,9 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
         duplicate?: { isDuplicate?: boolean; issueId?: string | null; reason?: string; confidenceScore?: number };
       };
 
-      if (result.category && CATEGORIES.some((c) => c.key === result.category)) setCategory(result.category);
-      if (result.title && !title.trim()) setTitle(result.title);
-      if (result.description && !description.trim()) setDescription(result.description);
+      if (result.category && result.category !== "other" && CATEGORIES.some((c) => c.key === result.category)) setCategory(result.category);
+      if (result.title) setTitle((current) => current.trim() ? current : result.title!.trim());
+      if (result.description) setDescription((current) => current.trim() ? current : result.description!.trim());
 
       const duplicate = result.duplicate;
       if (duplicate?.isDuplicate && duplicate.issueId && (duplicate.confidenceScore ?? 0) >= 0.6) {
@@ -328,7 +346,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
 
   const photoSection = (
     <div>
-      <label className="text-xs font-medium text-muted-foreground">Photos (optional, up to 3)</label>
+      <label className="text-xs font-medium text-muted-foreground">Upload a photo of the problem</label>
       <input
         ref={fileInputRef}
         type="file"
@@ -383,7 +401,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
         >
           <Camera size={22} className="text-primary" />
           <span className="text-sm font-medium">{photos.length === 0 ? "Snap or upload a photo" : "Add another photo"}</span>
-          <span className="text-[11px] text-muted-foreground">AI can suggest the report details from your first photo</span>
+          <span className="text-[11px] text-muted-foreground">AI suggests the title, category, and description from your first photo</span>
         </button>
       )}
       {aiBusy && (
@@ -430,7 +448,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
                 {dupeWarning.ai ? "AI found a similar report" : "A similar report exists"} ~{Math.round(dupeWarning.distance)}m away
               </div>
               <div className="text-muted-foreground">
-                "{dupeWarning.title}" — same category, still open. Upvoting it may be more effective than reporting again.
+                This looks like the same issue already reported: "{dupeWarning.title}". Upvoting it may be more effective than reporting again.
               </div>
               {dupeWarning.reason && (
                 <div className="text-muted-foreground">{dupeWarning.reason}</div>

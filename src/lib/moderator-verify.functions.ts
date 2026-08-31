@@ -45,14 +45,17 @@ export function normalizeModerationResult(value: unknown): ModerationResult {
   };
 }
 
-export async function verifyUserSubmission(userContentText: string): Promise<ModerationResult> {
+export async function verifyUserSubmission(
+  userContentText: string,
+  file?: { mimeType: string; data: string },
+): Promise<ModerationResult> {
   try {
     const trimmed = userContentText.trim();
-    if (!trimmed) {
+    if (!trimmed && !file?.data) {
       return {
         isApproved: false,
         flaggedCategory: "empty",
-        reason: "Submission text is empty.",
+        reason: "Submission is empty.",
         confidenceScore: 1,
       };
     }
@@ -60,12 +63,12 @@ export async function verifyUserSubmission(userContentText: string): Promise<Mod
     const response = await fetch("/api/public/verify-moderator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: trimmed }),
+      body: JSON.stringify({ text: trimmed, file }),
     });
     if (!response.ok) return fallbackResult;
     return normalizeModerationResult(await response.json());
   } catch (error) {
-    console.error("Ollama moderation failed", error);
+    console.error("Gemini moderation failed", error);
     return fallbackResult;
   }
 }

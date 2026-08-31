@@ -34,6 +34,7 @@ function ModeratorApply() {
   const [community, setCommunity] = useState("");
   const [proofKind, setProofKind] = useState<ProofKind>("letter");
   const [file, setFile] = useState<Blob | null>(null);
+  const [fileMimeType, setFileMimeType] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [state, setState] = useState<VerifyState>({ phase: "idle" });
   const [existing, setExisting] = useState<{ verified: boolean; ai_reason?: string | null } | null>(null);
@@ -98,6 +99,7 @@ function ModeratorApply() {
       }
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setFile(blob);
+      setFileMimeType(blob.type || f.type || "application/octet-stream");
       // Only create preview URL for images
       if (f.type.startsWith('image/')) {
         setPreviewUrl(URL.createObjectURL(blob));
@@ -110,6 +112,15 @@ function ModeratorApply() {
     }
   }
 
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!userId) return;
@@ -119,13 +130,16 @@ function ModeratorApply() {
     }
     setState({ phase: "checking" });
     try {
+      const proofFile = file
+        ? { mimeType: fileMimeType || file.type || "application/octet-stream", data: await blobToBase64(file) }
+        : undefined;
       const moderation = await verifyUserSubmission([
         `Moderator organization: ${organization.trim()}`,
         `Community served: ${community.trim()}`,
         `Government email: ${email}`,
         `Proof type: ${proofKind}`,
-        file ? "Proof file selected by user." : "No proof file selected.",
-      ].join("\n"));
+        file ? "Proof file attached for AI review." : "No proof file selected.",
+      ].join("\n"), proofFile);
       const approved = moderation.isApproved && moderation.confidenceScore >= 0.65;
       const reviewReason = approved
         ? moderation.reason
@@ -238,7 +252,7 @@ function ModeratorApply() {
                 <div className="text-xs text-muted-foreground py-6">{t("noDocUploaded")}</div>
               )}
               <input ref={inputRef} type="file" 
-                accept={proofKind === "letter" ? ".pdf,.docx,.png" : ".png,.jpg,.jpeg"}
+                accept={proofKind === "letter" ? ".pdf,.docx,.png,.jpg,.jpeg" : ".png,.jpg,.jpeg"}
                 capture={proofKind === "badge" ? "environment" : undefined}
                 onChange={onPickFile} className="hidden" />
               <button type="button" onClick={() => inputRef.current?.click()}

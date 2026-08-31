@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CATEGORIES, type IssueCategory } from "@/lib/categories";
-import { ollamaJson } from "@/lib/ollama.server";
+import { geminiJson } from "@/lib/gemini.server";
 
 type NearbyIssue = {
   id: string;
@@ -23,8 +23,8 @@ type AnalyzeResult = {
 };
 
 const fallback: AnalyzeResult = {
-  title: "",
-  description: "",
+  title: "__analysis_failed__",
+  description: "__analysis_failed__",
   category: "other",
   duplicate: {
     isDuplicate: false,
@@ -35,18 +35,18 @@ const fallback: AnalyzeResult = {
 };
 
 const schema = {
-  type: "object",
+  type: "OBJECT",
   properties: {
-    title: { type: "string" },
-    description: { type: "string" },
-    category: { type: "string", enum: CATEGORIES.map((c) => c.key) },
+    title: { type: "STRING" },
+    description: { type: "STRING" },
+    category: { type: "STRING", enum: CATEGORIES.map((c) => c.key) },
     duplicate: {
-      type: "object",
+      type: "OBJECT",
       properties: {
-        isDuplicate: { type: "boolean" },
-        issueId: { type: ["string", "null"] },
-        reason: { type: "string" },
-        confidenceScore: { type: "number" },
+        isDuplicate: { type: "BOOLEAN" },
+        issueId: { type: "STRING", nullable: true },
+        reason: { type: "STRING" },
+        confidenceScore: { type: "NUMBER" },
       },
       required: ["isDuplicate", "issueId", "reason", "confidenceScore"],
     },
@@ -83,19 +83,45 @@ export const Route = createFileRoute("/api/public/analyze-report-photo")({
           return Response.json({ error: "Missing photo" }, { status: 400 });
         }
 
-        const categories = CATEGORIES.map((c) => `${c.key}: ${c.hint}`).join("\n");
+        const categories = CATEGORIES.map((c) => `${c.key}: ${c.label} - ${c.hint}`).join("\n");
         const nearby = (body.nearbyIssues ?? [])
           .slice(0, 12)
           .map((issue) => `- id=${issue.id}; distance=${Math.round(issue.distance ?? 0)}m; category=${issue.category}; title=${issue.title}; description=${issue.description || ""}`)
           .join("\n") || "None";
 
-        const result = await ollamaJson<AnalyzeResult>({
-          system: "You help neighbors report local civic issues from photos. Return concise JSON only. Do not invent hazards that are not visible.",
-          prompt: `Analyze this report photo. Suggest a short title, category, and plain description. Also decide whether it is probably the same issue as one nearby.\n\nAllowed categories:\n${categories}\n\nNearby open reports:\n${nearby}`,
-          images: [body.imageBase64],
-          format: schema,
+        const result = await geminiJson<AnalyzeResult>({
+          system: "You are a vision model for a civic issue reporting app. Inspect the uploaded image. Return only one valid JSON object, with no markdown.",
+          prompt: `Look at the uploaded image and identify the main visible public-space problem. Return JSON with title, description, category, and duplicate.
+
+Rules:
+- title must be 4 to 12 words and specific to the visible issue.
+- description must be one concise sentence describing what is visible.
+- category must be exactly one of the allowed category keys.
+- Prefer a specific category over "other" whenever the photo shows a road hole, trash, broken light, unsafe crossing, graffiti, sidewalk damage, dumped item, or water leak.
+- Use "pothole" for holes, cracks, or damaged road surface.
+- Use "litter" for trash, dumped bags, overflowing bins, or loose rubbish.
+- Use "damaged_sidewalk" for cracked, blocked, or uneven pedestrian pavement.
+- Use "abandoned_item" for dumped furniture, appliances, mattresses, or large objects.
+- Use "water_leak" for visible leaking water, burst pipes, or hydrant leaks.
+- Use "broken_streetlight" for an unlit, damaged, leaning, or visibly broken streetlight.
+- Use "graffiti" for tagging, vandalism paint, or wall markings.
+- Use "unsafe_intersection" for blocked crossings, missing signs, or dangerous junction layout.
+- Use "other" only when none of the specific categories fit.
+- duplicate.isDuplicate must be true only if a nearby report appears to describe the same physical issue.
+
+Allowed categories:
+${categories}
+
+Nearby open reports:
+${nearby}`,
+          files: [{ mimeType: "image/jpeg", data: body.imageBase64 }],
+          schema,
           fallback,
         });
+
+        if (result.title === fallback.title && result.description === fallback.description) {
+          return Response.json({ error: "Photo analysis failed" }, { status: 502 });
+        }
 
         return Response.json(normalize(result));
       },
