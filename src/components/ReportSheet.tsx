@@ -104,9 +104,13 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
-    for (const file of files.slice(0, 4)) {
+    for (const file of files.slice(0, 3)) {
       try {
         const blob = await compressImage(file);
+        if (blob.size > 3 * 1024 * 1024) {
+          toast.error("Photo must be 3 MB or smaller.");
+          continue;
+        }
         const staged: StagedPhoto = {
           id: crypto.randomUUID(),
           blob,
@@ -114,7 +118,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
           progress: 0,
           status: "idle",
         };
-        setPhotos((prev) => [...prev, staged].slice(0, 4));
+        setPhotos((prev) => [...prev, staged].slice(0, 3));
       } catch {
         toast.error("Couldn't read one of the photos. Try again?");
       }
@@ -145,9 +149,9 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
     );
     updatePhoto(photo.id, { status: "uploading", progress: 0, abort: handle.abort });
     try {
-      await handle.promise;
-      updatePhoto(photo.id, { status: "done", storagePath: path });
-      return path;
+      const url = await handle.promise;
+      updatePhoto(photo.id, { status: "done", storagePath: url });
+      return url;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       updatePhoto(photo.id, { status: "error", errorMsg: msg });
@@ -343,7 +347,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
 
           <div>
             <label className="text-xs font-medium text-muted-foreground">
-              Photos (optional, up to 4)
+              Photos (optional, up to 3)
             </label>
             <input
               ref={fileInputRef}
@@ -394,7 +398,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
                 ))}
               </div>
             )}
-            {photos.length < 4 && (
+            {photos.length < 3 && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}

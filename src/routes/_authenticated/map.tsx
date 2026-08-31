@@ -634,8 +634,7 @@ async function sendQueued(item: QueuedReport) {
   for (const blob of item.photos) {
     const path = `${item.reporterId}/${crypto.randomUUID()}.webp`;
     const handle = uploadPhotoWithProgress("issue-photos", path, blob, () => {});
-    await handle.promise;
-    uploadedPaths.push(path);
+    uploadedPaths.push(await handle.promise);
   }
   const { data: row, error } = await supabase
     .from("issues")

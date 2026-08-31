@@ -1,12 +1,5 @@
-import { storage } from "@/integrations/firebase/client";
-import {
-  ref,
-  uploadBytesResumable,
-  type UploadTask,
-} from "firebase/storage";
-
 export type UploadHandle = {
-  promise: Promise<void>;
+  promise: Promise<string>;
   abort: () => void;
 };
 
@@ -16,31 +9,43 @@ export function uploadPhotoWithProgress(
   blob: Blob,
   onProgress: (pct: number) => void,
 ): UploadHandle {
-  const storageRef = ref(storage, `${bucket}/${path}`);
-  let task: UploadTask | null = null;
+  void bucket;
+  const controller = new AbortController();
+  const userId = path.split("/")[0] || "";
 
-  const promise = new Promise<void>((resolve, reject) => {
-    task = uploadBytesResumable(storageRef, blob, {
-      cacheControl: "public,max-age=31536000",
-      contentType: blob.type || "image/webp",
-    });
+  const promise = new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const form = new FormData();
+    form.append("userId", userId);
+    form.append("file", blob, path.split("/").pop() || "photo.webp");
 
-    task.on(
-      "state_changed",
-      (snapshot) => {
-        const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        onProgress(Number.isFinite(pct) ? pct : 0);
-      },
-      (error) => reject(error),
-      () => {
+    controller.signal.addEventListener("abort", () => xhr.abort());
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      const pct = Math.round((event.loaded / event.total) * 90);
+      onProgress(Number.isFinite(pct) ? pct : 0);
+    };
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText || "{}");
+        if (xhr.status < 200 || xhr.status >= 300 || !data.url) {
+          reject(new Error(data.error || "Photo upload failed"));
+          return;
+        }
         onProgress(100);
-        resolve();
-      },
-    );
+        resolve(data.url);
+      } catch {
+        reject(new Error("Photo upload failed"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Photo upload failed"));
+    xhr.onabort = () => reject(new Error("Photo upload cancelled"));
+    xhr.open("POST", "/api/public/upload-photo");
+    xhr.send(form);
   });
 
   return {
     promise,
-    abort: () => task?.cancel(),
+    abort: () => controller.abort(),
   };
 }

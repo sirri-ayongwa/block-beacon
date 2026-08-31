@@ -312,6 +312,9 @@ export const supabase = {
           return { data: { path }, error: null };
         },
         async createSignedUrl(path: string) {
+          if (/^https?:\/\//i.test(path)) {
+            return { data: { signedUrl: path }, error: null };
+          }
           const signedUrl = await getDownloadURL(ref(storage, `${bucket}/${path}`));
           return { data: { signedUrl }, error: null };
         },
