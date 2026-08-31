@@ -22,6 +22,7 @@ import { Route as AuthenticatedModeratorRouteImport } from './routes/_authentica
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as ApiPublicWeeklyDigestRouteImport } from './routes/api/public/weekly-digest'
+import { Route as ApiPublicUploadPhotoRouteImport } from './routes/api/public/upload-photo'
 import { Route as ApiPublicContactEmailRouteImport } from './routes/api/public/contact-email'
 import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator_.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
@@ -91,6 +92,11 @@ const ApiPublicWeeklyDigestRoute = ApiPublicWeeklyDigestRouteImport.update({
   path: '/api/public/weekly-digest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicUploadPhotoRoute = ApiPublicUploadPhotoRouteImport.update({
+  id: '/api/public/upload-photo',
+  path: '/api/public/upload-photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicContactEmailRoute = ApiPublicContactEmailRouteImport.update({
   id: '/api/public/contact-email',
   path: '/api/public/contact-email',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesByTo {
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesById {
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
   '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
+  '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRouteTypes {
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
+    | '/api/public/upload-photo'
     | '/api/public/weekly-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/issue/$id'
     | '/moderator/apply'
     | '/api/public/contact-email'
+    | '/api/public/upload-photo'
     | '/api/public/weekly-digest'
   id:
     | '__root__'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/_authenticated/issue/$id'
     | '/_authenticated/moderator_/apply'
     | '/api/public/contact-email'
+    | '/api/public/upload-photo'
     | '/api/public/weekly-digest'
   fileRoutesById: FileRoutesById
 }
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
   ApiPublicContactEmailRoute: typeof ApiPublicContactEmailRoute
+  ApiPublicUploadPhotoRoute: typeof ApiPublicUploadPhotoRoute
   ApiPublicWeeklyDigestRoute: typeof ApiPublicWeeklyDigestRoute
 }
 
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWeeklyDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/upload-photo': {
+      id: '/api/public/upload-photo'
+      path: '/api/public/upload-photo'
+      fullPath: '/api/public/upload-photo'
+      preLoaderRoute: typeof ApiPublicUploadPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/contact-email': {
       id: '/api/public/contact-email'
       path: '/api/public/contact-email'
@@ -377,6 +397,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
   ApiPublicContactEmailRoute: ApiPublicContactEmailRoute,
+  ApiPublicUploadPhotoRoute: ApiPublicUploadPhotoRoute,
   ApiPublicWeeklyDigestRoute: ApiPublicWeeklyDigestRoute,
 }
 export const routeTree = rootRouteImport
