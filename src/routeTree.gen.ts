@@ -24,9 +24,11 @@ import { Route as AuthenticatedModeratorRouteImport } from './routes/_authentica
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as ApiPublicWeeklyDigestRouteImport } from './routes/api/public/weekly-digest'
+import { Route as ApiPublicVerifyModeratorRouteImport } from './routes/api/public/verify-moderator'
 import { Route as ApiPublicUploadPhotoRouteImport } from './routes/api/public/upload-photo'
 import { Route as ApiPublicDigestTestRouteImport } from './routes/api/public/digest-test'
 import { Route as ApiPublicContactEmailRouteImport } from './routes/api/public/contact-email'
+import { Route as ApiPublicAnalyzeReportPhotoRouteImport } from './routes/api/public/analyze-report-photo'
 import { Route as AuthenticatedModeratorApplyRouteImport } from './routes/_authenticated/moderator_.apply'
 import { Route as AuthenticatedIssueIdRouteImport } from './routes/_authenticated/issue.$id'
 
@@ -105,6 +107,12 @@ const ApiPublicWeeklyDigestRoute = ApiPublicWeeklyDigestRouteImport.update({
   path: '/api/public/weekly-digest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicVerifyModeratorRoute =
+  ApiPublicVerifyModeratorRouteImport.update({
+    id: '/api/public/verify-moderator',
+    path: '/api/public/verify-moderator',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicUploadPhotoRoute = ApiPublicUploadPhotoRouteImport.update({
   id: '/api/public/upload-photo',
   path: '/api/public/upload-photo',
@@ -120,6 +128,12 @@ const ApiPublicContactEmailRoute = ApiPublicContactEmailRouteImport.update({
   path: '/api/public/contact-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAnalyzeReportPhotoRoute =
+  ApiPublicAnalyzeReportPhotoRouteImport.update({
+    id: '/api/public/analyze-report-photo',
+    path: '/api/public/analyze-report-photo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedModeratorApplyRoute =
   AuthenticatedModeratorApplyRouteImport.update({
     id: '/moderator_/apply',
@@ -148,9 +162,11 @@ export interface FileRoutesByFullPath {
   '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/analyze-report-photo': typeof ApiPublicAnalyzeReportPhotoRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
   '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
+  '/api/public/verify-moderator': typeof ApiPublicVerifyModeratorRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesByTo {
@@ -169,9 +185,11 @@ export interface FileRoutesByTo {
   '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/issue/$id': typeof AuthenticatedIssueIdRoute
   '/moderator/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/analyze-report-photo': typeof ApiPublicAnalyzeReportPhotoRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
   '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
+  '/api/public/verify-moderator': typeof ApiPublicVerifyModeratorRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRoutesById {
@@ -192,9 +210,11 @@ export interface FileRoutesById {
   '/reset-password/confirm': typeof ResetPasswordConfirmRoute
   '/_authenticated/issue/$id': typeof AuthenticatedIssueIdRoute
   '/_authenticated/moderator_/apply': typeof AuthenticatedModeratorApplyRoute
+  '/api/public/analyze-report-photo': typeof ApiPublicAnalyzeReportPhotoRoute
   '/api/public/contact-email': typeof ApiPublicContactEmailRoute
   '/api/public/digest-test': typeof ApiPublicDigestTestRoute
   '/api/public/upload-photo': typeof ApiPublicUploadPhotoRoute
+  '/api/public/verify-moderator': typeof ApiPublicVerifyModeratorRoute
   '/api/public/weekly-digest': typeof ApiPublicWeeklyDigestRoute
 }
 export interface FileRouteTypes {
@@ -215,9 +235,11 @@ export interface FileRouteTypes {
     | '/reset-password/confirm'
     | '/issue/$id'
     | '/moderator/apply'
+    | '/api/public/analyze-report-photo'
     | '/api/public/contact-email'
     | '/api/public/digest-test'
     | '/api/public/upload-photo'
+    | '/api/public/verify-moderator'
     | '/api/public/weekly-digest'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -236,9 +258,11 @@ export interface FileRouteTypes {
     | '/reset-password/confirm'
     | '/issue/$id'
     | '/moderator/apply'
+    | '/api/public/analyze-report-photo'
     | '/api/public/contact-email'
     | '/api/public/digest-test'
     | '/api/public/upload-photo'
+    | '/api/public/verify-moderator'
     | '/api/public/weekly-digest'
   id:
     | '__root__'
@@ -258,9 +282,11 @@ export interface FileRouteTypes {
     | '/reset-password/confirm'
     | '/_authenticated/issue/$id'
     | '/_authenticated/moderator_/apply'
+    | '/api/public/analyze-report-photo'
     | '/api/public/contact-email'
     | '/api/public/digest-test'
     | '/api/public/upload-photo'
+    | '/api/public/verify-moderator'
     | '/api/public/weekly-digest'
   fileRoutesById: FileRoutesById
 }
@@ -274,9 +300,11 @@ export interface RootRouteChildren {
   VerifyEmailRoute: typeof VerifyEmailRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
+  ApiPublicAnalyzeReportPhotoRoute: typeof ApiPublicAnalyzeReportPhotoRoute
   ApiPublicContactEmailRoute: typeof ApiPublicContactEmailRoute
   ApiPublicDigestTestRoute: typeof ApiPublicDigestTestRoute
   ApiPublicUploadPhotoRoute: typeof ApiPublicUploadPhotoRoute
+  ApiPublicVerifyModeratorRoute: typeof ApiPublicVerifyModeratorRoute
   ApiPublicWeeklyDigestRoute: typeof ApiPublicWeeklyDigestRoute
 }
 
@@ -387,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWeeklyDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/verify-moderator': {
+      id: '/api/public/verify-moderator'
+      path: '/api/public/verify-moderator'
+      fullPath: '/api/public/verify-moderator'
+      preLoaderRoute: typeof ApiPublicVerifyModeratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/upload-photo': {
       id: '/api/public/upload-photo'
       path: '/api/public/upload-photo'
@@ -406,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/contact-email'
       fullPath: '/api/public/contact-email'
       preLoaderRoute: typeof ApiPublicContactEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/analyze-report-photo': {
+      id: '/api/public/analyze-report-photo'
+      path: '/api/public/analyze-report-photo'
+      fullPath: '/api/public/analyze-report-photo'
+      preLoaderRoute: typeof ApiPublicAnalyzeReportPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/moderator_/apply': {
@@ -468,9 +510,11 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyEmailRoute: VerifyEmailRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
+  ApiPublicAnalyzeReportPhotoRoute: ApiPublicAnalyzeReportPhotoRoute,
   ApiPublicContactEmailRoute: ApiPublicContactEmailRoute,
   ApiPublicDigestTestRoute: ApiPublicDigestTestRoute,
   ApiPublicUploadPhotoRoute: ApiPublicUploadPhotoRoute,
+  ApiPublicVerifyModeratorRoute: ApiPublicVerifyModeratorRoute,
   ApiPublicWeeklyDigestRoute: ApiPublicWeeklyDigestRoute,
 }
 export const routeTree = rootRouteImport

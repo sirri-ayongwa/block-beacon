@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Camera, MapPin, Loader2, RotateCw, EyeOff, Wifi, WifiOff, Trash2 } from "lucide-react";
+import { X, Camera, MapPin, Loader2, RotateCw, EyeOff, Wifi, WifiOff, Trash2, Sparkles } from "lucide-react";
 import { CATEGORIES, type IssueCategory } from "@/lib/categories";
 import { compressImage } from "@/lib/compressImage";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,8 +36,9 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
   const [anonymous, setAnonymous] = useState(defaultAnonymous);
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState<boolean>(typeof navigator === "undefined" ? true : navigator.onLine);
-  const [dupeWarning, setDupeWarning] = useState<{ id: string; title: string; distance: number } | null>(null);
+  const [dupeWarning, setDupeWarning] = useState<{ id: string; title: string; distance: number; reason?: string; ai?: boolean } | null>(null);
   const [dupeAcknowledged, setDupeAcknowledged] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
       setAnonymous(defaultAnonymous);
       setDupeWarning(null);
       setDupeAcknowledged(false);
+      setAiBusy(false);
     }
   }, [open, defaultAnonymous]);
 
@@ -116,11 +118,86 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
           status: "idle",
         };
         setPhotos((prev) => [...prev, staged].slice(0, 3));
+        if (photos.length === 0 && !title.trim() && !description.trim()) {
+          void analyzePhoto(blob);
+        }
       } catch {
         toast.error("Couldn't read one of the photos. Try again?");
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function analyzePhoto(blob: Blob) {
+    if (!navigator.onLine || !location) return;
+    setAiBusy(true);
+    try {
+      const delta = 0.001;
+      const { data } = await supabase
+        .from("issues")
+        .select("id, title, description, lat, lng, category, status")
+        .limit(100);
+      const nearbyIssues = ((data ?? []) as Array<{ id: string; title: string; description?: string | null; lat: number; lng: number; category?: string; status?: string }>)
+        .filter((row) => row.status !== "fixed")
+        .filter((row) => row.lat >= location.lat - delta && row.lat <= location.lat + delta && row.lng >= location.lng - delta && row.lng <= location.lng + delta)
+        .map((row) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          distance: haversineMeters(location, { lat: row.lat, lng: row.lng }),
+        }))
+        .filter((row) => row.distance <= 60)
+        .sort((a, b) => a.distance - b.distance);
+
+      const response = await fetch("/api/public/analyze-report-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: await blobToBase64(blob),
+          nearbyIssues,
+        }),
+      });
+      if (!response.ok) return;
+      const result = await response.json() as {
+        title?: string;
+        description?: string;
+        category?: IssueCategory;
+        duplicate?: { isDuplicate?: boolean; issueId?: string | null; reason?: string; confidenceScore?: number };
+      };
+
+      if (result.category && CATEGORIES.some((c) => c.key === result.category)) setCategory(result.category);
+      if (result.title && !title.trim()) setTitle(result.title);
+      if (result.description && !description.trim()) setDescription(result.description);
+
+      const duplicate = result.duplicate;
+      if (duplicate?.isDuplicate && duplicate.issueId && (duplicate.confidenceScore ?? 0) >= 0.6) {
+        const match = nearbyIssues.find((issue) => issue.id === duplicate.issueId);
+        if (match) {
+          setDupeWarning({
+            id: match.id,
+            title: match.title,
+            distance: match.distance,
+            reason: duplicate.reason,
+            ai: true,
+          });
+          setDupeAcknowledged(false);
+        }
+      }
+    } catch {
+      // Autofill is best-effort; users can still submit manually.
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   function updatePhoto(id: string, patch: Partial<StagedPhoto>) {
@@ -249,6 +326,75 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
 
   if (!open) return null;
 
+  const photoSection = (
+    <div>
+      <label className="text-xs font-medium text-muted-foreground">Photos (optional, up to 3)</label>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        onChange={handlePhoto}
+        className="hidden"
+      />
+      {photos.length > 0 && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {photos.map((p) => (
+            <div key={p.id} className="relative rounded-xl border border-border overflow-hidden bg-background">
+              <img src={p.previewUrl} alt="Your photo" className="w-full h-28 object-cover" />
+              <button
+                type="button"
+                onClick={() => removePhoto(p.id)}
+                className="absolute top-1.5 right-1.5 rounded-full bg-background/90 p-1"
+                aria-label="Remove photo"
+              ><Trash2 size={12} /></button>
+              {(p.status === "uploading" || p.status === "done") && (
+                <div className="absolute bottom-0 inset-x-0 bg-background/80 px-2 py-1">
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${p.progress}%` }} />
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-muted-foreground">
+                    {p.status === "done" ? "Sent" : `Uploading ${p.progress}%`}
+                  </div>
+                </div>
+              )}
+              {p.status === "error" && (
+                <div className="absolute inset-0 bg-destructive/80 text-destructive-foreground flex flex-col items-center justify-center gap-1 p-2 text-center">
+                  <div className="text-[11px] font-medium">{p.errorMsg}</div>
+                  <button
+                    type="button"
+                    onClick={() => retryPhoto(p.id)}
+                    className="text-[11px] rounded-full bg-background text-foreground px-2 py-1 flex items-center gap-1"
+                  >
+                    <RotateCw size={11} /> Retry
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {photos.length < 3 && (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="mt-2 w-full rounded-xl border-2 border-dashed border-border py-6 flex flex-col items-center gap-1 hover:bg-secondary/50"
+        >
+          <Camera size={22} className="text-primary" />
+          <span className="text-sm font-medium">{photos.length === 0 ? "Snap or upload a photo" : "Add another photo"}</span>
+          <span className="text-[11px] text-muted-foreground">AI can suggest the report details from your first photo</span>
+        </button>
+      )}
+      {aiBusy && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Sparkles size={13} className="text-primary" />
+          Suggesting details from photo...
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-foreground/40 backdrop-blur-sm">
       <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -277,14 +423,18 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
               </div>
             </div>
           )}
+          {photoSection}
           {dupeWarning && (
             <div className="rounded-xl bg-warning/10 border border-warning/40 p-3 text-xs space-y-2">
               <div className="font-medium text-foreground">
-                A similar report exists ~{Math.round(dupeWarning.distance)}m away
+                {dupeWarning.ai ? "AI found a similar report" : "A similar report exists"} ~{Math.round(dupeWarning.distance)}m away
               </div>
               <div className="text-muted-foreground">
                 "{dupeWarning.title}" — same category, still open. Upvoting it may be more effective than reporting again.
               </div>
+              {dupeWarning.reason && (
+                <div className="text-muted-foreground">{dupeWarning.reason}</div>
+              )}
               <label className="flex items-center gap-2 text-foreground">
                 <input
                   type="checkbox"
@@ -340,72 +490,6 @@ export function ReportSheet({ open, onClose, location, userId, defaultAnonymous 
               onChange={(e) => setDescription(e.target.value)}
               className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
             />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Photos (optional, up to 3)
-            </label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              multiple
-              onChange={handlePhoto}
-              className="hidden"
-            />
-            {photos.length > 0 && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {photos.map((p) => (
-                  <div key={p.id} className="relative rounded-xl border border-border overflow-hidden bg-background">
-                    <img src={p.previewUrl} alt="Your photo" className="w-full h-28 object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(p.id)}
-                      className="absolute top-1.5 right-1.5 rounded-full bg-background/90 p-1"
-                      aria-label="Remove photo"
-                    ><Trash2 size={12} /></button>
-                    {(p.status === "uploading" || p.status === "done") && (
-                      <div className="absolute bottom-0 inset-x-0 bg-background/80 px-2 py-1">
-                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${p.progress}%` }}
-                          />
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-muted-foreground">
-                          {p.status === "done" ? "Sent" : `Uploading ${p.progress}%`}
-                        </div>
-                      </div>
-                    )}
-                    {p.status === "error" && (
-                      <div className="absolute inset-0 bg-destructive/80 text-destructive-foreground flex flex-col items-center justify-center gap-1 p-2 text-center">
-                        <div className="text-[11px] font-medium">{p.errorMsg}</div>
-                        <button
-                          type="button"
-                          onClick={() => retryPhoto(p.id)}
-                          className="text-[11px] rounded-full bg-background text-foreground px-2 py-1 flex items-center gap-1"
-                        >
-                          <RotateCw size={11} /> Retry
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {photos.length < 3 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-2 w-full rounded-xl border-2 border-dashed border-border py-6 flex flex-col items-center gap-1 hover:bg-secondary/50"
-              >
-                <Camera size={22} className="text-primary" />
-                <span className="text-sm font-medium">{photos.length === 0 ? "Snap or upload a photo" : "Add another photo"}</span>
-                <span className="text-[11px] text-muted-foreground">Shrunk automatically for weak signals</span>
-              </button>
-            )}
           </div>
 
           <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-border bg-background p-3">
