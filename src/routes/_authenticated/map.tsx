@@ -309,39 +309,43 @@ function MapPage() {
   return (
     <div className="fixed inset-0 flex flex-col bg-background">
       {/* Top bar */}
-      <header className="z-[500] flex items-center justify-between px-4 py-3 bg-card/95 backdrop-blur border-b border-border shadow-sm">
-        <Link to="/" className="flex items-center gap-2 font-display font-bold">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground">
+      <header className="z-[500] flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-card/95 backdrop-blur border-b border-border shadow-sm">
+        <Link to="/" className="flex shrink-0 items-center gap-2 font-display font-bold text-sm sm:text-base">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
             <MapPin size={14} strokeWidth={2.5} />
           </span>
-          BlockBeacon
+          <span className="hidden min-[380px]:inline">BlockBeacon</span>
         </Link>
-        <div className="flex items-center gap-2">
+        {/* Actions scroll sideways on small screens so nothing gets cut off */}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setShowLocations((s) => !s)}
-            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
+            className="shrink-0 rounded-full border border-border bg-background px-2.5 sm:px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
-            <MapPin size={13} /> {country || t("location")}
+            <MapPin size={13} /> <span className="hidden sm:inline">{country || t("location")}</span>
           </button>
           <button
             onClick={() => setShowFilters((s) => !s)}
-            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
+            className="shrink-0 rounded-full border border-border bg-background px-2.5 sm:px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 hover:bg-secondary"
           >
             <Filter size={13} />
-            {activeFilterCount > 0 ? `${activeFilterCount} ${t("filters")}` : t("filter")}
+            <span className="hidden sm:inline">
+              {activeFilterCount > 0 ? `${activeFilterCount} ${t("filters")}` : t("filter")}
+            </span>
+            {activeFilterCount > 0 && <span className="sm:hidden">{activeFilterCount}</span>}
           </button>
-          <Link to="/settings" title={t("settings")} className="rounded-full p-2 hover:bg-secondary">
+          <Link to="/settings" title={t("settings")} className="shrink-0 rounded-full p-1.5 sm:p-2 hover:bg-secondary">
             <Settings size={16} />
           </Link>
-          <Link to="/leaderboard" title={t("leaderboard")} className="rounded-full p-2 hover:bg-secondary">
+          <Link to="/leaderboard" title={t("leaderboard")} className="shrink-0 rounded-full p-1.5 sm:p-2 hover:bg-secondary">
             <Trophy size={16} />
           </Link>
-          <LanguageDropdown />
-          <NotificationBell userId={userId} />
+          <div className="shrink-0"><LanguageDropdown /></div>
+          <div className="shrink-0"><NotificationBell userId={userId} /></div>
           <button
             onClick={signOut}
             title={t("signOut")}
-            className="rounded-full p-2 hover:bg-secondary"
+            className="shrink-0 rounded-full p-1.5 sm:p-2 hover:bg-secondary"
           >
             <LogOut size={16} />
           </button>
@@ -349,7 +353,7 @@ function MapPage() {
       </header>
 
       {showLocations && (
-        <div className="z-[500] absolute top-[56px] right-3 w-72 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
+        <div className="z-[500] absolute top-[56px] left-3 right-3 sm:left-auto sm:w-72 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-xl">
           <div className="text-sm font-semibold mb-2">Jump to a precise address</div>
           <AddressPicker
             initialCountry={country}

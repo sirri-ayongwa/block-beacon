@@ -105,7 +105,7 @@ export function NotificationBell({ userId }: { userId: string | null }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-xl z-50">
+        <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1.5rem))] max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-xl z-50">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border sticky top-0 bg-card">
             <div className="text-sm font-semibold">{t("notifications")}</div>
             <div className="flex items-center gap-2">

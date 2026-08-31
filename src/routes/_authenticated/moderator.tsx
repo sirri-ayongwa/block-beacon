@@ -88,7 +88,7 @@ function ModeratorDashboard() {
     setBusy(null);
     if (error) { toast.error(error.message); return; }
 
-    // Build the 311-style deliverables and open both for the moderator.
+    // Build the referral deliverables and open both for the moderator.
     const body = buildReferralEmailBody(issue, profile.community, profile.organization);
     const subject = `[BlockBeacon] ${CATEGORY_MAP[issue.category]?.label ?? "Community issue"} — ${issue.title}`;
     const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
