@@ -43,7 +43,7 @@ For example, a road hazard photo can become:
 
 > Large pothole blocking right lane
 
-The current AI provider is Gemini, using `gemini-2.5-flash` from server-side API routes.
+The current AI provider is Gemini, using `gemini-3.6-flash` from server-side API routes.
 
 ### Duplicate Report Detection
 
@@ -95,7 +95,7 @@ Verified moderators can:
 
 For issues that need escalation, moderators can generate handoff material including:
 
-- a 311-style referral email body
+- a referral email body
 - a browser-generated PDF summary
 - issue title, category, status, upvotes, location, and description
 
@@ -153,10 +153,8 @@ The UI includes a language dropdown and localized text support, with English as 
 - Tailwind CSS
 - Leaflet and React Leaflet
 - OpenStreetMap tiles
-- Firebase Auth
-- Firestore through a local compatibility adapter
-- Firebase Storage
-- Gemini `gemini-2.5-flash`
+- Firebase
+- Gemini
 - jsPDF
 - UploadThing
 - Resend and Mailchimp-related email utilities
@@ -175,8 +173,7 @@ Important areas:
 - `src/routes/api/public/analyze-report-photo.ts` - Gemini photo analysis route
 - `src/routes/api/public/verify-moderator.ts` - Gemini moderator verification route
 - `src/lib/gemini.server.ts` - shared server-side Gemini JSON helper
-- `src/integrations/firebase/client.ts` - Firebase app, Auth, Firestore, and Storage setup
-- `src/integrations/supabase/client.ts` - compatibility-style data access layer used by existing app code
+- `src/integrations/firebase/client.ts` - Firebase setup
 
 The codebase currently uses Firebase services while preserving a Supabase-like client interface in parts of the app. That compatibility layer keeps the app moving without requiring every existing call site to be rewritten at once.
 
@@ -327,8 +324,6 @@ Some infrastructure details depend on the deployment environment, especially Fir
 ## Roadmap
 
 Planned or natural next steps:
-
-- direct 311 API integrations for cities that expose them
 - ward or district boundaries for moderator assignment
 - stronger background push notification support
 - open data exports for researchers and journalists
